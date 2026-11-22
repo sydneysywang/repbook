@@ -9,26 +9,36 @@ import { ExerciseEditor, newSet } from "@/components/ExerciseEditor";
 import { Icon } from "@/components/Icon";
 import { PageHeader } from "@/components/PageHeader";
 import { VariationPicker } from "@/components/VariationPicker";
+import { WorkoutSaved, type SavedWorkoutInfo } from "@/components/WorkoutSaved";
 import { useStore } from "@/lib/store";
 import { countSets, formatClock, formatElapsed, plural } from "@/lib/summary";
 import type { ActiveWorkout, WorkoutExercise } from "@/lib/types";
 import { prepareWorkoutForSave } from "@/lib/validation";
 
-type Saved = { exerciseCount: number; setCount: number; droppedSets: number };
-
 export default function WorkoutPage() {
   const { data } = useStore();
-  const [saved, setSaved] = useState<Saved | null>(null);
+  const [saved, setSaved] = useState<SavedWorkoutInfo | null>(null);
 
   if (data.activeWorkout) {
     return <ActiveWorkoutView active={data.activeWorkout} onSaved={setSaved} />;
   }
-  return <StartScreen saved={saved} onStart={() => setSaved(null)} />;
+  if (saved) {
+    return (
+      <WorkoutSaved
+        saved={saved}
+        onDone={() => {
+          setSaved(null);
+          window.scrollTo({ top: 0 });
+        }}
+      />
+    );
+  }
+  return <StartScreen />;
 }
 
 /* ---------- No workout running ---------- */
 
-function StartScreen({ saved, onStart }: { saved: Saved | null; onStart: () => void }) {
+function StartScreen() {
   const { data, startWorkout } = useStore();
   const templates = [...data.templates].sort((a, b) =>
     a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
@@ -37,27 +47,12 @@ function StartScreen({ saved, onStart }: { saved: Saved | null; onStart: () => v
 
   function start(templateId?: string) {
     const result = startWorkout(templateId);
-    if (result.ok) onStart();
-    else setProblem(result.problems[0]);
+    if (!result.ok) setProblem(result.problems[0]);
   }
 
   return (
     <>
       <PageHeader title="Workout" subtitle="Start blank, or pick up one of your templates." />
-
-      {saved && (
-        <div role="status" className="border-b border-rule py-5">
-          <p className="flex items-center gap-2 font-bold">
-            <Icon name="asterisk" size={18} className="shrink-0 text-orange" />
-            Workout saved.
-          </p>
-          <p className="mt-1 text-sm text-muted tabular-nums">
-            {plural(saved.exerciseCount, "exercise")} · {plural(saved.setCount, "set")}
-            {saved.droppedSets > 0 &&
-              ` · ${plural(saved.droppedSets, "unticked set")} left out`}
-          </p>
-        </div>
-      )}
 
       <div className="py-6">
         <Button onClick={() => start()}>Start blank workout</Button>
@@ -121,7 +116,7 @@ function useNow(intervalMs: number): number {
   return now;
 }
 
-function ActiveWorkoutView({ active, onSaved }: { active: ActiveWorkout; onSaved: (s: Saved) => void }) {
+function ActiveWorkoutView({ active, onSaved }: { active: ActiveWorkout; onSaved: (s: SavedWorkoutInfo) => void }) {
   const { data, exerciseName, updateActiveExercises, discardWorkout, finishWorkout } = useStore();
   const now = useNow(30_000);
   const [confirm, setConfirm] = useState<"finish" | "discard" | null>(null);
@@ -135,7 +130,13 @@ function ActiveWorkoutView({ active, onSaved }: { active: ActiveWorkout; onSaved
     const result = finishWorkout();
     setConfirm(null);
     if (!result.ok) return setFinishProblem(result.problems[0]);
-    onSaved(result);
+    onSaved({
+      workoutId: result.id,
+      templateId: active.templateId,
+      exerciseCount: result.exerciseCount,
+      setCount: result.setCount,
+      droppedSets: result.droppedSets,
+    });
     window.scrollTo({ top: 0 });
   }
 

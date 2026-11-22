@@ -11,7 +11,14 @@ import {
 } from "react";
 import { BUILT_IN_EXERCISES } from "./exercise-library";
 import { emptyData, loadData, saveData } from "./storage";
-import type { AppData, Exercise, MuscleGroup, Variation, WorkoutExercise } from "./types";
+import type {
+  AppData,
+  Exercise,
+  MuscleGroup,
+  TemplateExercise,
+  Variation,
+  WorkoutExercise,
+} from "./types";
 import {
   TEMPLATE_LIMIT_MESSAGE,
   canCreateTemplate,
@@ -67,6 +74,10 @@ type StoreValue = {
   discardWorkout: () => void;
   /** Saves ticked sets only; needs at least one. */
   finishWorkout: () => FinishResult;
+  /** New template from a saved workout's exercises and sets (never variations). */
+  saveWorkoutAsTemplate: (workoutId: string, name: string) => ActionResult;
+  /** Replace a template's exercises and sets with a saved workout's; keeps its name. */
+  updateTemplateFromWorkout: (templateId: string, workoutId: string) => ActionResult;
 
   /** An exercise's variations that haven't been deleted (for pickers). */
   variationsFor: (exerciseId: string) => Variation[];
@@ -136,6 +147,46 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     const cleanName = (name: string) => name.trim().replace(/\s+/g, " ");
 
+    const createTemplate = (draft: TemplateDraft): ActionResult => {
+      if (!canCreateTemplate(data.templates)) return { ok: false, problems: [TEMPLATE_LIMIT_MESSAGE] };
+      const problems = checkDraft(draft);
+      if (problems.length) return { ok: false, problems };
+      const id = crypto.randomUUID();
+      const t = now();
+      update((d) => ({
+        ...d,
+        templates: [
+          ...d.templates,
+          { id, name: cleanName(draft.name), exercises: draft.exercises, createdAt: t, updatedAt: t },
+        ],
+      }));
+      return { ok: true, id };
+    };
+
+    const updateTemplate = (id: string, draft: TemplateDraft): ActionResult => {
+      if (!data.templates.some((t) => t.id === id))
+        return { ok: false, problems: ["This template no longer exists."] };
+      const problems = checkDraft(draft, id);
+      if (problems.length) return { ok: false, problems };
+      update((d) => ({
+        ...d,
+        templates: d.templates.map((t) =>
+          t.id === id
+            ? { ...t, name: cleanName(draft.name), exercises: draft.exercises, updatedAt: now() }
+            : t,
+        ),
+      }));
+      return { ok: true, id };
+    };
+
+    // Templates copy exercises and sets (reps + weight) with fresh ids, never variations.
+    const templateExercisesFrom = (exercises: WorkoutExercise[]): TemplateExercise[] =>
+      exercises.map((ex) => ({
+        id: crypto.randomUUID(),
+        exerciseId: ex.exerciseId,
+        sets: ex.sets.map((s) => ({ id: crypto.randomUUID(), reps: s.reps, weight: s.weight })),
+      }));
+
     return {
       ready,
       data,
@@ -148,37 +199,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       dismissStorageError,
       exerciseName,
 
-      createTemplate: (draft) => {
-        if (!canCreateTemplate(data.templates)) return { ok: false, problems: [TEMPLATE_LIMIT_MESSAGE] };
-        const problems = checkDraft(draft);
-        if (problems.length) return { ok: false, problems };
-        const id = crypto.randomUUID();
-        const t = now();
-        update((d) => ({
-          ...d,
-          templates: [
-            ...d.templates,
-            { id, name: cleanName(draft.name), exercises: draft.exercises, createdAt: t, updatedAt: t },
-          ],
-        }));
-        return { ok: true, id };
-      },
-
-      updateTemplate: (id, draft) => {
-        if (!data.templates.some((t) => t.id === id))
-          return { ok: false, problems: ["This template no longer exists."] };
-        const problems = checkDraft(draft, id);
-        if (problems.length) return { ok: false, problems };
-        update((d) => ({
-          ...d,
-          templates: d.templates.map((t) =>
-            t.id === id
-              ? { ...t, name: cleanName(draft.name), exercises: draft.exercises, updatedAt: now() }
-              : t,
-          ),
-        }));
-        return { ok: true, id };
-      },
+      createTemplate,
+      updateTemplate,
 
       cloneTemplate: (id) => {
         const source = data.templates.find((t) => t.id === id);
@@ -295,6 +317,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           setCount: prepared.completeSets,
           droppedSets: prepared.droppedSets,
         };
+      },
+
+      saveWorkoutAsTemplate: (workoutId, name) => {
+        const workout = data.workouts.find((w) => w.id === workoutId);
+        if (!workout) return { ok: false, problems: ["This workout no longer exists."] };
+        return createTemplate({ name, exercises: templateExercisesFrom(workout.exercises) });
+      },
+
+      updateTemplateFromWorkout: (templateId, workoutId) => {
+        const workout = data.workouts.find((w) => w.id === workoutId);
+        if (!workout) return { ok: false, problems: ["This workout no longer exists."] };
+        const template = data.templates.find((t) => t.id === templateId);
+        if (!template) return { ok: false, problems: ["This template no longer exists."] };
+        return updateTemplate(templateId, {
+          name: template.name,
+          exercises: templateExercisesFrom(workout.exercises),
+        });
       },
 
       variationsFor: (exerciseId) =>

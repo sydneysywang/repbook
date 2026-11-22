@@ -6,12 +6,15 @@ import type { ReactNode } from "react";
  * a periwinkle crescent on one side. Dark mode: plum → black with a coral rim.
  * Colours come from --orb-* in globals.css.
  */
-export function GlowOrb({ children }: { children: ReactNode }) {
+export function GlowOrb({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
+  // Compact keeps what follows (e.g. the template choice after a workout) on screen.
+  const box = compact ? "min-h-[34vh] py-10" : "min-h-[60vh] py-16";
+  const orb = compact ? "w-[min(24rem,100vw)]" : "w-[min(34rem,120vw)]";
   return (
-    <div className="relative isolate flex min-h-[60vh] items-center justify-center py-16">
+    <div className={`relative isolate flex ${box} items-center justify-center`}>
       <div
         aria-hidden
-        className="pointer-events-none absolute left-1/2 top-1/2 -z-10 aspect-square w-[min(34rem,120vw)] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
+        className={`pointer-events-none absolute left-1/2 top-1/2 -z-10 aspect-square ${orb} -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl`}
         style={{
           opacity: 0.85,
           background: [
