@@ -16,7 +16,8 @@ export type IconName =
   | "search"
   | "copy"
   | "pencil"
-  | "chevron-right";
+  | "chevron-right"
+  | "check";
 
 const PATHS: Record<IconName, ReactNode> = {
   home: (
@@ -106,6 +107,7 @@ const PATHS: Record<IconName, ReactNode> = {
     </>
   ),
   "chevron-right": <path d="m9.5 6 6 6-6 6" />,
+  check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
 };
 
 type IconProps = SVGProps<SVGSVGElement> & {

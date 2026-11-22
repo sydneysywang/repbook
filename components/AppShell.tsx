@@ -26,7 +26,17 @@ function isActive(href: string, pathname: string | null): boolean {
 
 /* ---------- Phone: bottom tabs ---------- */
 
+/** Small orange dot shown on the Workout tab while a workout is running. */
+function RunningDot({ className = "" }: { className?: string }) {
+  return <span aria-hidden className={`absolute size-2 rounded-full bg-orange ${className}`} />;
+}
+
+function useWorkoutRunning(): boolean {
+  return useStore().data.activeWorkout !== null;
+}
+
 function BottomTabLinks({ pathname }: { pathname: string | null }) {
+  const running = useWorkoutRunning();
   return (
     <ul className="mx-auto grid max-w-[640px] grid-cols-4">
       {TABS.map((tab) => {
@@ -40,8 +50,12 @@ function BottomTabLinks({ pathname }: { pathname: string | null }) {
                 active ? "text-ink" : "text-muted"
               }`}
             >
-              <Icon name={tab.icon} size={22} />
+              <span className="relative">
+                <Icon name={tab.icon} size={22} />
+                {running && tab.href === "/workout" && <RunningDot className="-top-0.5 -right-1" />}
+              </span>
               <span>{tab.label}</span>
+              {running && tab.href === "/workout" && <span className="sr-only">(in progress)</span>}
               <span
                 aria-hidden
                 className={`h-0.5 w-5 rounded-full ${active ? "bg-ink" : "bg-transparent"}`}
@@ -55,12 +69,19 @@ function BottomTabLinks({ pathname }: { pathname: string | null }) {
 }
 
 function ActiveBottomTabs() {
-  return <BottomTabLinks pathname={usePathname()} />;
+  const pathname = usePathname();
+  return (
+    <>
+      <ResumeBar pathname={pathname} />
+      <BottomTabLinks pathname={pathname} />
+    </>
+  );
 }
 
 /* ---------- Laptop: top bar links ---------- */
 
 function TopBarLinks({ pathname }: { pathname: string | null }) {
+  const running = useWorkoutRunning();
   return (
     <ul className="flex items-stretch gap-6">
       {TOP_BAR.map((item) => {
@@ -75,6 +96,12 @@ function TopBarLinks({ pathname }: { pathname: string | null }) {
               }`}
             >
               {item.label}
+              {running && item.href === "/workout" && (
+                <>
+                  <RunningDot className="top-2.5 -right-2.5" />
+                  <span className="sr-only">(in progress)</span>
+                </>
+              )}
               <span
                 aria-hidden
                 className={`absolute inset-x-0 bottom-1 h-0.5 rounded-full ${
@@ -91,6 +118,40 @@ function TopBarLinks({ pathname }: { pathname: string | null }) {
 
 function ActiveTopBarLinks() {
   return <TopBarLinks pathname={usePathname()} />;
+}
+
+/* ---------- Resume bar ---------- */
+
+/** "Workout in progress · Resume" while a workout runs and the user is elsewhere. */
+function ResumeBar({ pathname, className = "" }: { pathname: string | null; className?: string }) {
+  const running = useWorkoutRunning();
+  if (!running || pathname === null || isActive("/workout", pathname)) return null;
+  return (
+    <div className={`border-b border-rule bg-surface/95 ${className}`}>
+      <Link
+        href="/workout"
+        className="mx-auto flex min-h-11 max-w-[640px] items-center justify-between gap-3 px-5 text-sm font-medium md:px-8"
+      >
+        <span className="flex items-center gap-2">
+          <span aria-hidden className="size-2 rounded-full bg-orange" />
+          Workout in progress
+        </span>
+        <span className="flex items-center gap-1">
+          Resume
+          <Icon name="arrow-right" size={16} />
+        </span>
+      </Link>
+    </div>
+  );
+}
+
+function LaptopResumeBar() {
+  return (
+    <ResumeBar
+      pathname={usePathname()}
+      className="fixed inset-x-0 bottom-0 z-20 hidden border-t border-b-0 backdrop-blur-md md:block"
+    />
+  );
 }
 
 /* ---------- Storage problems ---------- */
@@ -143,6 +204,7 @@ function StorageBanner() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { ready } = useStore();
+  const running = useWorkoutRunning();
 
   return (
     <div className="flex min-h-dvh flex-col overflow-x-clip">
@@ -177,7 +239,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
       </header>
 
-      <main className="relative isolate mx-auto w-full max-w-[640px] flex-1 px-5 pt-8 pb-28 md:px-8 md:pt-14 md:pb-20">
+      <main className={`relative isolate mx-auto w-full max-w-[640px] flex-1 px-5 pt-8 md:px-8 md:pt-14 ${
+          running ? "pb-40 md:pb-28" : "pb-28 md:pb-20"
+        }`}>
         <StorageBanner />
         {/* Pages always render (Next validates every segment renders), but
             stay hidden until browser storage has been read to avoid a flash
@@ -190,7 +254,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div hidden={!ready}>{children}</div>
       </main>
 
-      {/* Phone bottom tabs */}
+      {/* Laptop resume bar */}
+      <Suspense fallback={null}>
+        <LaptopResumeBar />
+      </Suspense>
+
+      {/* Phone bottom tabs (with the resume bar above them) */}
       <nav
         aria-label="Main"
         className="fixed inset-x-0 bottom-0 z-20 border-t border-rule bg-bg/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"

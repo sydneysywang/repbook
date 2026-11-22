@@ -130,7 +130,7 @@ Reference screenshots are in `docs/design-inspo/`; open them before styling. The
 
 ## Build sessions
 
-Each session is built in a fresh Claude Code session, using plan mode first.
+Each session is built in a fresh Claude Code session.
 
 | # | Feature | Scope | Done when the user can… |
 |---|---|---|---|
@@ -146,7 +146,7 @@ Each session is built in a fresh Claude Code session, using plan mode first.
 - [x] Session 0 — spec saved to AGENTS.md
 - [x] Session 1 — Foundation & shell
 - [x] Session 2 — Templates + exercise picker
-- [ ] Session 3 — Active workout
+- [x] Session 3 — Active workout
 - [ ] Session 4 — Finish flow ↔ templates
 - [ ] Session 5 — History & Home
 - [ ] Session 6 — Polish & final check

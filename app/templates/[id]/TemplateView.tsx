@@ -12,10 +12,11 @@ import { countSets, formatSet, plural } from "@/lib/summary";
 
 export function TemplateView() {
   const { id } = useParams<{ id: string }>();
-  const { ready, data, exerciseName, cloneTemplate, deleteTemplate } = useStore();
+  const { ready, data, exerciseName, cloneTemplate, deleteTemplate, startWorkout } = useStore();
   const router = useRouter();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [cloneProblem, setCloneProblem] = useState<string | null>(null);
+  const [startProblem, setStartProblem] = useState<string | null>(null);
   // Just deleted: render nothing while navigating away (avoids a "not found" flash).
   const [leaving, setLeaving] = useState(false);
 
@@ -36,6 +37,14 @@ export function TemplateView() {
     if (result.ok) router.push(`/templates/${result.id}`);
     else setCloneProblem(result.problems[0]);
   }
+
+  function start() {
+    const result = startWorkout(template!.id);
+    if (result.ok) router.push("/workout");
+    else setStartProblem(result.problems[0]);
+  }
+
+  const running = data.activeWorkout !== null;
 
   return (
     <>
@@ -65,8 +74,29 @@ export function TemplateView() {
         ))}
       </ol>
 
-      <div className="flex flex-wrap gap-3 pt-6">
-        <ButtonLink href={`/templates/${template.id}/edit`}>Edit</ButtonLink>
+      <div className="pt-6">
+        {running ? (
+          <>
+            <ButtonLink href="/workout">Resume workout</ButtonLink>
+            <p className="mt-3 text-sm text-muted">
+              A workout is already running. Finish or discard it to start this template.
+            </p>
+          </>
+        ) : (
+          <Button onClick={start}>Start workout</Button>
+        )}
+        {startProblem && (
+          <p role="alert" className="mt-3 text-sm text-muted">
+            {startProblem}
+          </p>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-3 pt-4">
+        <ButtonLink href={`/templates/${template.id}/edit`} variant="secondary">
+          <Icon name="pencil" size={18} />
+          Edit
+        </ButtonLink>
         <Button variant="secondary" onClick={clone}>
           <Icon name="copy" size={18} />
           Clone

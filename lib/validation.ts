@@ -1,4 +1,4 @@
-import type { Exercise, SetEntry, Template, TemplateExercise } from "./types";
+import type { Exercise, SetEntry, Template, TemplateExercise, Variation, WorkoutExercise } from "./types";
 
 export const TEMPLATE_LIMIT = 20;
 
@@ -86,4 +86,38 @@ export function isExerciseNameTaken(
 ): boolean {
   const n = normalise(name);
   return exercises.some((e) => !e.deleted && e.id !== exceptId && normalise(e.name) === n);
+}
+
+/** Variation names must be unique within one exercise (ignoring case and deleted ones). */
+export function isVariationNameTaken(
+  name: string,
+  variations: Variation[],
+  exerciseId: string,
+  exceptId?: string,
+): boolean {
+  const n = normalise(name);
+  return variations.some(
+    (v) => !v.deleted && v.exerciseId === exerciseId && v.id !== exceptId && normalise(v.name) === n,
+  );
+}
+
+export type PreparedWorkout = {
+  /** Only complete sets; exercises left with no sets are dropped. */
+  exercises: WorkoutExercise[];
+  droppedSets: number;
+  completeSets: number;
+};
+
+/** Finish rule: sets missing reps or weight are dropped before saving. */
+export function prepareWorkoutForSave(exercises: WorkoutExercise[]): PreparedWorkout {
+  let droppedSets = 0;
+  let completeSets = 0;
+  const kept: WorkoutExercise[] = [];
+  for (const ex of exercises) {
+    const sets = ex.sets.filter(isSetComplete);
+    droppedSets += ex.sets.length - sets.length;
+    completeSets += sets.length;
+    if (sets.length > 0) kept.push({ ...ex, sets });
+  }
+  return { exercises: kept, droppedSets, completeSets };
 }

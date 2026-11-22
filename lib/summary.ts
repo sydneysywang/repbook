@@ -14,3 +14,16 @@ export function formatSet(set: SetEntry): string {
   const weight = set.weight === null ? "–" : set.weight === 0 ? "bodyweight" : `${set.weight} kg`;
   return `${weight} × ${reps}`;
 }
+
+/** Time since a start, e.g. "12 min" or "1 h 05 min". */
+export function formatElapsed(startedAt: string, now: number): string {
+  const minutes = Math.max(0, Math.floor((now - new Date(startedAt).getTime()) / 60000));
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  return `${h} h ${String(minutes % 60).padStart(2, "0")} min`;
+}
+
+/** Clock time in the user's locale, e.g. "18:42". */
+export function formatClock(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}

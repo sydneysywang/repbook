@@ -11,12 +11,14 @@ import {
 } from "react";
 import { BUILT_IN_EXERCISES } from "./exercise-library";
 import { emptyData, loadData, saveData } from "./storage";
-import type { AppData, Exercise, MuscleGroup, Variation } from "./types";
+import type { AppData, Exercise, MuscleGroup, Variation, WorkoutExercise } from "./types";
 import {
   TEMPLATE_LIMIT_MESSAGE,
   canCreateTemplate,
   cloneName,
   isExerciseNameTaken,
+  isVariationNameTaken,
+  prepareWorkoutForSave,
   validateTemplate,
   type TemplateDraft,
 } from "./validation";
@@ -58,7 +60,24 @@ type StoreValue = {
   addCustomExercise: (name: string, muscleGroup: MuscleGroup) => ActionResult;
   renameCustomExercise: (id: string, name: string) => ActionResult;
   deleteCustomExercise: (id: string) => void;
+
+  /** Starts blank, or from a template (copies exercises and sets, never variations). */
+  startWorkout: (templateId?: string) => ActionResult;
+  updateActiveExercises: (exercises: WorkoutExercise[]) => void;
+  discardWorkout: () => void;
+  /** Saves complete sets only; needs at least one. */
+  finishWorkout: () => FinishResult;
+
+  /** An exercise's variations that haven't been deleted (for pickers). */
+  variationsFor: (exerciseId: string) => Variation[];
+  addVariation: (exerciseId: string, name: string) => ActionResult;
+  renameVariation: (id: string, name: string) => ActionResult;
+  deleteVariation: (id: string) => void;
 };
+
+export type FinishResult =
+  | { ok: true; id: string; exerciseCount: number; setCount: number; droppedSets: number }
+  | { ok: false; problems: string[] };
 
 const StoreContext = createContext<StoreValue | null>(null);
 
@@ -219,6 +238,105 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         update((d) => ({
           ...d,
           customExercises: d.customExercises.map((e) => (e.id === id ? { ...e, deleted: true } : e)),
+        }));
+      },
+
+      startWorkout: (templateId) => {
+        if (data.activeWorkout) return { ok: false, problems: ["A workout is already running."] };
+        let exercises: WorkoutExercise[] = [];
+        if (templateId) {
+          const template = data.templates.find((t) => t.id === templateId);
+          if (!template) return { ok: false, problems: ["This template no longer exists."] };
+          exercises = template.exercises.map((ex) => ({
+            id: crypto.randomUUID(),
+            exerciseId: ex.exerciseId,
+            variationId: null,
+            sets: ex.sets.map((s) => ({ ...s, id: crypto.randomUUID() })),
+          }));
+        }
+        update((d) => ({
+          ...d,
+          activeWorkout: { startedAt: now(), templateId: templateId ?? null, exercises },
+        }));
+        return { ok: true, id: templateId ?? "blank" };
+      },
+
+      updateActiveExercises: (exercises) => {
+        update((d) => (d.activeWorkout ? { ...d, activeWorkout: { ...d.activeWorkout, exercises } } : d));
+      },
+
+      discardWorkout: () => {
+        update((d) => ({ ...d, activeWorkout: null }));
+      },
+
+      finishWorkout: () => {
+        const active = data.activeWorkout;
+        if (!active) return { ok: false, problems: ["There's no workout running."] };
+        const prepared = prepareWorkoutForSave(active.exercises);
+        if (prepared.completeSets === 0)
+          return {
+            ok: false,
+            problems: ["Log at least one set with reps and weight before finishing."],
+          };
+        const id = crypto.randomUUID();
+        const workout = {
+          id,
+          startedAt: active.startedAt,
+          finishedAt: now(),
+          templateId: active.templateId,
+          exercises: prepared.exercises,
+        };
+        update((d) => ({ ...d, workouts: [...d.workouts, workout], activeWorkout: null }));
+        return {
+          ok: true,
+          id,
+          exerciseCount: prepared.exercises.length,
+          setCount: prepared.completeSets,
+          droppedSets: prepared.droppedSets,
+        };
+      },
+
+      variationsFor: (exerciseId) =>
+        data.variations
+          .filter((v) => v.exerciseId === exerciseId && !v.deleted)
+          .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
+
+      addVariation: (exerciseId, name) => {
+        const clean = cleanName(name);
+        if (!clean) return { ok: false, problems: ["Give the variation a name."] };
+        if (isVariationNameTaken(clean, data.variations, exerciseId))
+          return { ok: false, problems: [`"${clean}" already exists for this exercise.`] };
+        const id = crypto.randomUUID();
+        update((d) => ({ ...d, variations: [...d.variations, { id, exerciseId, name: clean }] }));
+        return { ok: true, id };
+      },
+
+      renameVariation: (id, name) => {
+        const v = variationById.get(id);
+        if (!v) return { ok: false, problems: ["This variation no longer exists."] };
+        const clean = cleanName(name);
+        if (!clean) return { ok: false, problems: ["Give the variation a name."] };
+        if (isVariationNameTaken(clean, data.variations, v.exerciseId, id))
+          return { ok: false, problems: [`"${clean}" already exists for this exercise.`] };
+        update((d) => ({
+          ...d,
+          variations: d.variations.map((x) => (x.id === id ? { ...x, name: clean } : x)),
+        }));
+        return { ok: true, id };
+      },
+
+      deleteVariation: (id) => {
+        // Soft delete: hidden from pickers; past workouts keep the name.
+        // The running workout drops it so the picker and the chip agree.
+        update((d) => ({
+          ...d,
+          variations: d.variations.map((v) => (v.id === id ? { ...v, deleted: true } : v)),
+          activeWorkout: d.activeWorkout && {
+            ...d.activeWorkout,
+            exercises: d.activeWorkout.exercises.map((ex) =>
+              ex.variationId === id ? { ...ex, variationId: null } : ex,
+            ),
+          },
         }));
       },
     };
