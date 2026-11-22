@@ -102,19 +102,23 @@ export function isVariationNameTaken(
 }
 
 export type PreparedWorkout = {
-  /** Only complete sets; exercises left with no sets are dropped. */
+  /** Only ticked sets (without the tick flag); exercises left with no sets are dropped. */
   exercises: WorkoutExercise[];
+  /** Sets that weren't ticked and will be left out. */
   droppedSets: number;
+  /** Ticked sets that will be saved. */
   completeSets: number;
 };
 
-/** Finish rule: sets missing reps or weight are dropped before saving. */
+/** Finish rule: only sets ticked as done (which always have reps and weight) are saved. */
 export function prepareWorkoutForSave(exercises: WorkoutExercise[]): PreparedWorkout {
   let droppedSets = 0;
   let completeSets = 0;
   const kept: WorkoutExercise[] = [];
   for (const ex of exercises) {
-    const sets = ex.sets.filter(isSetComplete);
+    const sets = ex.sets
+      .filter((s) => s.done === true && isSetComplete(s))
+      .map(({ id, reps, weight }) => ({ id, reps, weight }));
     droppedSets += ex.sets.length - sets.length;
     completeSets += sets.length;
     if (sets.length > 0) kept.push({ ...ex, sets });

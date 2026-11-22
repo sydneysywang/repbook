@@ -65,7 +65,7 @@ type StoreValue = {
   startWorkout: (templateId?: string) => ActionResult;
   updateActiveExercises: (exercises: WorkoutExercise[]) => void;
   discardWorkout: () => void;
-  /** Saves complete sets only; needs at least one. */
+  /** Saves ticked sets only; needs at least one. */
   finishWorkout: () => FinishResult;
 
   /** An exercise's variations that haven't been deleted (for pickers). */
@@ -251,7 +251,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             id: crypto.randomUUID(),
             exerciseId: ex.exerciseId,
             variationId: null,
-            sets: ex.sets.map((s) => ({ ...s, id: crypto.randomUUID() })),
+            // Planned numbers only; nothing is ticked yet.
+            sets: ex.sets.map((s) => ({ id: crypto.randomUUID(), reps: s.reps, weight: s.weight })),
           }));
         }
         update((d) => ({
@@ -276,7 +277,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (prepared.completeSets === 0)
           return {
             ok: false,
-            problems: ["Log at least one set with reps and weight before finishing."],
+            problems: ["Tick at least one set you've done before finishing."],
           };
         const id = crypto.randomUUID();
         const workout = {

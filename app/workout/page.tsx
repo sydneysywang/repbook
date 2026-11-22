@@ -54,7 +54,7 @@ function StartScreen({ saved, onStart }: { saved: Saved | null; onStart: () => v
           <p className="mt-1 text-sm text-muted tabular-nums">
             {plural(saved.exerciseCount, "exercise")} · {plural(saved.setCount, "set")}
             {saved.droppedSets > 0 &&
-              ` · ${plural(saved.droppedSets, "incomplete set")} left out`}
+              ` · ${plural(saved.droppedSets, "unticked set")} left out`}
           </p>
         </div>
       )}
@@ -167,8 +167,9 @@ function ActiveWorkoutView({ active, onSaved }: { active: ActiveWorkout; onSaved
             onChange={(variationId) => update({ ...ex, variationId })}
           />
         )}
+        trackDone
         emptyTitle="Nothing logged yet."
-        emptyHelper="Add your first exercise, then log each set's weight and reps."
+        emptyHelper="Add your first exercise, then tick each set as you finish it."
       />
 
       <div className="mt-8 border-t border-rule pt-6">
@@ -197,7 +198,8 @@ function ActiveWorkoutView({ active, onSaved }: { active: ActiveWorkout; onSaved
           <Dialog open onClose={() => setConfirm(null)} title="Nothing to save yet">
             <div className="p-5">
               <p className="text-muted">
-                Log at least one set with both weight and reps (use 0 kg for bodyweight), then finish.
+                Tick the sets you&apos;ve done with the ✓ next to each one (fill in weight and reps
+                first; 0 kg for bodyweight), then finish.
               </p>
               <div className="mt-6 flex justify-end">
                 <Button variant="secondary" onClick={() => setConfirm(null)}>
@@ -213,7 +215,7 @@ function ActiveWorkoutView({ active, onSaved }: { active: ActiveWorkout; onSaved
             message={
               `${plural(prepared.exercises.length, "exercise")} and ${plural(prepared.completeSets, "set")} will be saved.` +
               (prepared.droppedSets > 0
-                ? ` ${plural(prepared.droppedSets, "set")} missing weight or reps will be left out.`
+                ? ` ${plural(prepared.droppedSets, "set")} not ticked will be left out.`
                 : "")
             }
             confirmLabel="Finish"

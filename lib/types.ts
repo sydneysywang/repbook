@@ -29,6 +29,8 @@ export type SetEntry = {
   id: string;
   reps: number | null;
   weight: number | null;
+  /** Ticked off during the active workout. Only ticked sets are saved on finish. */
+  done?: boolean;
 };
 
 export type WorkoutExercise = {

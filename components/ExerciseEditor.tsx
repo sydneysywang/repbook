@@ -23,6 +23,8 @@ type ExerciseEditorProps<T extends EditableExercise> = {
   renderExtra?: (exercise: T, update: (next: T) => void) => ReactNode;
   emptyTitle?: string;
   emptyHelper?: string;
+  /** Show a "done" tick on each set (active workout only). */
+  trackDone?: boolean;
 };
 
 export function newSet(from?: SetEntry): SetEntry {
@@ -41,6 +43,7 @@ export function ExerciseEditor<T extends EditableExercise>({
   renderExtra,
   emptyTitle = "No exercises yet.",
   emptyHelper = "Add your first exercise to get started.",
+  trackDone = false,
 }: ExerciseEditorProps<T>) {
   const { exerciseName } = useStore();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -80,6 +83,7 @@ export function ExerciseEditor<T extends EditableExercise>({
                       set={set}
                       exerciseName={name}
                       incomplete={incompleteSetIds?.has(set.id) ?? false}
+                      trackDone={trackDone}
                       onChange={(s) => update({ ...ex, sets: ex.sets.map((x) => (x.id === s.id ? s : x)) })}
                       onRemove={() => update({ ...ex, sets: ex.sets.filter((x) => x.id !== set.id) })}
                     />

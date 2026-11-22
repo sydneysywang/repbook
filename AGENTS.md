@@ -55,6 +55,7 @@ Check it worked: the served stylesheet should contain the current colour tokens,
 
 - **Storage:** browser localStorage. Not chosen: IndexedDB (much more code or an extra library, no benefit at this size, same Safari 7-day deletion rule), sessionStorage (wiped when the tab closes), cookies (~4 KB, sent to servers). Show a friendly message if storage is full or the saved data can't be read.
 - **Sets** record **reps + weight** in kg. Weight 0 is allowed (bodyweight).
+- **Ticking sets:** during a workout each set has a ✓ tick button at the end of its row (Option A). A set can only be ticked once it has reps and weight; clearing either un-ticks it. Ticked rows get a light orange tint and lose their remove ✕. Starting from a template pre-fills the planned numbers with nothing ticked. The tick is only kept on the active workout; saved workouts and templates don't store it.
 - **Templates:** maximum 20. A template can't be saved (as new or over an existing one) if its name is empty, it has no exercises, or **any set is missing reps or weight**. Template names must be unique (ignoring case).
 - **Exercises vs variations:**
   - The built-in library treats equipment types as separate exercises, e.g. "Bench Press (Barbell)", "Bench Press (Dumbbell)", "Chest Press Machine". Users can add custom exercises.
@@ -87,7 +88,7 @@ No blank screens: every list has a readable empty state (e.g. "No workouts yet �
 
 ## Finishing a workout
 
-- Sets missing reps or weight are dropped, and the user is told. A workout needs at least one complete set to be saved.
+- **Only ticked sets are saved.** Unticked sets (planned or half-filled) are left out, and the finish confirm says how many. A workout needs at least one ticked set to be saved.
 - **Started blank:** offer an optional "Save as template" (asks for a name; template rules and the 20 limit apply).
 - **Started from a template:** offer "Update '<template name>'", "Save as new template", or "Don't change templates". If that template was deleted in the meantime, offer only "Save as new template".
 - Templates copy exercises and sets (reps + weight), never variations.
@@ -136,8 +137,8 @@ Each session is built in a fresh Claude Code session.
 |---|---|---|---|
 | 1 | Foundation & shell | Data types, localStorage storage + store, built-in exercise list, app shell (header, ⓘ, bottom tabs / top bar), About page, not-found page, shared empty-state component, tab title "Repbook". Other pages can be placeholders with empty states. | Move between all tabs on phone and laptop, see About, see a friendly page at `/nope`. |
 | 2 | Templates + exercise picker | Templates list/create/view/edit/clone/delete with the completeness rule, unique names and 20 limit; exercise picker with search, add custom exercise, rename/delete custom exercises. | Create, clone, edit and delete templates; get blocked by a missing weight and at 21 templates; add a custom exercise. |
-| 3 | Active workout | Start blank or from a template, add exercises, variation picker (add/rename/delete), sets with reps + weight, survives refresh, resume bar + tab dot, discard, basic finish that saves to storage. | Log a workout with a "Glute Drive" variation, refresh mid-workout, finish it. |
-| 4 | Finish flow ↔ templates | Drop incomplete sets; save-as-template for blank starts; update existing / save as new / don't change for template starts; handle a deleted template and the 20 limit. | Finish a blank workout as a template; finish a template workout and either update it or save as new. |
+| 3 | Active workout | Start blank or from a template, add exercises, variation picker (add/rename/delete), sets with reps + weight, survives refresh, resume bar + tab dot, discard, basic finish that saves to storage, ✓ tick per set (only ticked sets are saved). | Log a workout with a "Glute Drive" variation, refresh mid-workout, finish it. |
+| 4 | Finish flow ↔ templates | Leave out unticked sets (already built in Session 3; keep the message); save-as-template for blank starts; update existing / save as new / don't change for template starts; handle a deleted template and the 20 limit. | Finish a blank workout as a template; finish a template workout and either update it or save as new. |
 | 5 | History & Home | History list with summaries, `/history/[id]` detail with edit/delete, "last time" hint per exercise + variation, Home page with start/resume, template quick-starts and weekly summary. | Browse, open, edit and delete past workouts; see different "last time" numbers for two variations. |
 | 6 | Polish & final check | Go through the Verification checklist, fix anything failing, check every empty state and not-found case, polish phone and laptop layouts, run lint and build. | Run through the whole checklist with no blank screens. |
 
@@ -158,7 +159,7 @@ Each session is built in a fresh Claude Code session.
   - Empty app: every page shows a readable message; no blank screens.
   - `/nope`, `/history/fake-id` and `/templates/fake-id` show the friendly not-found message.
   - Creating a template with a missing weight is blocked with a clear message; fixing it lets it save. With 20 templates, a 21st is blocked. Clone, edit and delete work.
-  - Start a blank workout, add an exercise and a new variation, log sets, refresh mid-workout (still there), finish and save as a template.
+  - Start a blank workout, add an exercise and a new variation, log sets, tick some of them, refresh mid-workout (still there, ticks included), finish (unticked sets left out) and save as a template.
   - Start from a template, change sets, finish and update the existing template; repeat and save as new.
   - The "last time" hint differs between "Glute Drive" and "Booty Builder".
   - Renaming a variation shows the new name in past workouts; deleting it keeps the name in past workouts and removes it from the picker.
