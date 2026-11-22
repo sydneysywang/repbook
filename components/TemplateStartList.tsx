@@ -9,10 +9,12 @@ type TemplateStartListProps = {
   onStart: (templateId: string) => void;
   /** Which templates to show, in order. Defaults to all of them, A–Z. */
   templates?: Template[];
+  /** Drop the last row's bottom rule when the next section's top rule closes the list. */
+  hideLastRule?: boolean;
 };
 
 /** Templates as one-tap starts (Workout start screen and Home). */
-export function TemplateStartList({ onStart, templates: shown }: TemplateStartListProps) {
+export function TemplateStartList({ onStart, templates: shown, hideLastRule = false }: TemplateStartListProps) {
   const { data } = useStore();
   const templates =
     shown ??
@@ -21,7 +23,7 @@ export function TemplateStartList({ onStart, templates: shown }: TemplateStartLi
   return (
     <ul className="mt-3 border-t border-rule">
       {templates.map((t) => (
-        <li key={t.id} className="border-b border-rule">
+        <li key={t.id} className={`border-b border-rule ${hideLastRule ? "last:border-b-0" : ""}`}>
           <button
             type="button"
             onClick={() => onStart(t.id)}

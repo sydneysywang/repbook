@@ -65,7 +65,7 @@ export default function HomePage() {
       </div>
 
       {!active && data.templates.length > 0 && (
-        <section aria-labelledby="quick-start" className="border-t border-rule pt-6 pb-2">
+        <section aria-labelledby="quick-start" className="border-t border-rule pt-6">
           <div className="flex items-baseline justify-between gap-4">
             <h2 id="quick-start" className="flex items-center gap-2 font-bold">
               <Icon name="asterisk" size={18} className="text-orange" />
@@ -78,7 +78,7 @@ export default function HomePage() {
               All templates
             </Link>
           </div>
-          <TemplateStartList onStart={start} templates={quickStarts} />
+          <TemplateStartList onStart={start} templates={quickStarts} hideLastRule />
         </section>
       )}
 
