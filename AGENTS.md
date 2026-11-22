@@ -112,7 +112,7 @@ No blank screens: every list has a readable empty state (e.g. "No workouts yet �
 
 ## Design — "Warm glow"
 
-Reference screenshots are in `design-inspo/`; open them before styling. The colour palette and grain follow `Screenshot 2026-11-22 at 19.26.25.png` (peach page, orange → purple glow, film grain). Aim for energetic but calm, not a "gym bro" app.
+Reference screenshots are in `docs/design-inspo/`; open them before styling. The colour palette and grain follow `Screenshot 2026-11-22 at 19.26.25.png` (peach page, orange → purple glow, film grain). Aim for energetic but calm, not a "gym bro" app.
 
 - **Colours** (CSS variables in `app/globals.css`, exposed to Tailwind via `@theme inline`):
   - Light: background peach-pink `#F3D8C7`, surface `#F8E6DA`, ink `#111111`, muted text `#6A5650`, rule lines = ink at ~15% opacity.

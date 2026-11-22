@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* "Warm glow" with grain — based on design-inspo/Screenshot 2026-11-22 at 19.26.25.png */
+/* "Warm glow" with grain — based on docs/design-inspo/Screenshot 2026-11-22 at 19.26.25.png */
 :root {
   /* Peach-pink paper. */
   --bg: #f3d8c7;
