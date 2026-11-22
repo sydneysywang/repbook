@@ -31,7 +31,7 @@ Before the final response, run one reporting pass. If candidates remain, from th
 
 # Repbook
 
-Repbook is a workout logger built for Sprint 1 of the "building with AI" course. User persona: a busy professional, beginner to intermediate, who trains 2–3 times a week and switches between gyms.
+Repbook is a workout logger. User persona: a busy professional, beginner to intermediate, who trains 2–3 times a week and switches between gyms.
 
 ## Constraints
 
@@ -90,7 +90,7 @@ No blank screens: every list has a readable empty state (e.g. "No workouts yet �
 - `lib/store.tsx` — React context provider (wrapped in `app/layout.tsx`) exposing data and actions for workouts, templates, exercises, variations and the active workout. Shows a brief loading state until browser data has been read, to avoid flicker and hydration mismatches.
 - `lib/validation.ts` — template completeness, unique names, 20 limit, workout finish rules.
 - `lib/summary.ts` — duration, set count, volume, weekly/monthly counts, "last time" lookup.
-- `components/` — AppShell/nav, ExerciseEditor (shared by the active workout, history edit and template edit), ExercisePicker, VariationPicker, SetRow, EmptyState, NotFoundMessage, ConfirmDialog.
+- `components/` — AppShell/nav, ExerciseEditor (shared by the active workout, history edit and template edit), ExercisePicker, VariationPicker, SetRow, EmptyState, NotFoundMessage, ConfirmDialog, plus design pieces: Glow (page-top blob), GlowOrb (big-moment orb), Icon (inline SVG set), Wordmark.
 - `app/not-found.tsx` handles unknown addresses. Detail pages show the same NotFoundMessage when an id isn't in storage.
 - Next.js 16 note: `cacheComponents` is on in `next.config.ts`, so dynamic route `params` are runtime data. Detail pages are client components that read the id with `useParams`. Generate ids with `crypto.randomUUID()`.
 
@@ -99,6 +99,22 @@ No blank screens: every list has a readable empty state (e.g. "No workouts yet �
 - Works on phone and laptop. Single column on phone, wider cards on laptop. Light and dark mode.
 - Large tap targets; number keypads (`inputMode="decimal"`) for reps and weight.
 - Browser tab title: "Repbook".
+
+## Design — "Warm glow"
+
+Reference screenshots are in `design-inspo/`; open them before styling. Aim for energetic but calm, not a "gym bro" app.
+
+- **Colours** (CSS variables in `app/globals.css`, exposed to Tailwind via `@theme inline`):
+  - Light: background cream `#F6EFE6`, surface `#FBF7F2`, ink `#111111`, muted text `#6B6560`, rule lines = ink at ~15% opacity.
+  - Glow colours: orange `#F26B3A`, red `#E8453C`, violet `#6D4AE8`, dusty blue `#8FA9C4`.
+  - Dark: background `#121011`, ink `#F3EDE6`, glow at ~half opacity, primary buttons invert (cream fill, dark text).
+- **Type:** Space Grotesk via `next/font/google` (built into Next.js, not a new library), replacing Geist Sans; keep Geist Mono. Page titles large, bold, tight tracking (e.g. "Ready to train?"). Numbers (reps, weight, counts) use `tabular-nums`. Wordmark: lowercase "repbook." with the full stop in orange.
+- **Glow:** a soft blurred orange→red→violet blob (layered `radial-gradient`s + `blur`) at the top of each page, behind the title. Decorative only (`aria-hidden`, `pointer-events-none`). Text must never depend on the glow for contrast — keep ink on cream.
+- **Shapes and lines:** thin 1px rule lines between sections instead of heavy cards. Primary buttons: square corners (≤4px radius), black fill, cream text, with a → arrow. Secondary buttons: 1px outline. Tap targets at least 44px.
+- **Icons:** simple inline SVG line icons (no icon library). The ✱ asterisk is a recurring accent (section headings, empty states).
+- **Tabs:** phone bottom tabs show icon + label; active tab is ink with a short underline bar, others muted. The laptop top bar uses the same underline style. Content sits in a centred column (~640px).
+- **Empty states:** ✱ + a short bold line + one muted helper line, left-aligned, not boxed.
+- **Glow orb (big moments):** a full-screen centred orb (violet→red; grey/black variant in dark mode) behind a short message. Used for the "Workout saved" screen (Session 4) and on About. Session 1 builds the reusable `GlowOrb` component and uses it only on About.
 
 ## Build sessions
 
