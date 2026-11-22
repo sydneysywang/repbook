@@ -7,11 +7,13 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Dialog } from "@/components/Dialog";
 import { ExerciseEditor, newSet } from "@/components/ExerciseEditor";
 import { Icon } from "@/components/Icon";
+import { LastTimeHint } from "@/components/LastTimeHint";
 import { PageHeader } from "@/components/PageHeader";
+import { TemplateStartList } from "@/components/TemplateStartList";
 import { VariationPicker } from "@/components/VariationPicker";
 import { WorkoutSaved, type SavedWorkoutInfo } from "@/components/WorkoutSaved";
 import { useStore } from "@/lib/store";
-import { countSets, formatClock, formatElapsed, plural } from "@/lib/summary";
+import { formatClock, formatElapsed, plural } from "@/lib/summary";
 import type { ActiveWorkout, WorkoutExercise } from "@/lib/types";
 import { prepareWorkoutForSave } from "@/lib/validation";
 
@@ -40,9 +42,6 @@ export default function WorkoutPage() {
 
 function StartScreen() {
   const { data, startWorkout } = useStore();
-  const templates = [...data.templates].sort((a, b) =>
-    a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
-  );
   const [problem, setProblem] = useState<string | null>(null);
 
   function start(templateId?: string) {
@@ -68,7 +67,7 @@ function StartScreen() {
           <Icon name="asterisk" size={18} className="text-orange" />
           Or start from a template
         </h2>
-        {templates.length === 0 ? (
+        {data.templates.length === 0 ? (
           <p className="mt-2 text-muted">
             No templates yet.{" "}
             <Link href="/templates/new" className="font-medium text-ink underline underline-offset-4">
@@ -77,28 +76,7 @@ function StartScreen() {
             to start your usual routine in one tap.
           </p>
         ) : (
-          <ul className="mt-3 border-t border-rule">
-            {templates.map((t) => (
-              <li key={t.id} className="border-b border-rule">
-                <button
-                  type="button"
-                  onClick={() => start(t.id)}
-                  className="flex min-h-16 w-full items-center justify-between gap-4 py-4 text-left hover:opacity-75"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-lg font-bold tracking-tight">{t.name}</span>
-                    <span className="block text-sm text-muted tabular-nums">
-                      {plural(t.exercises.length, "exercise")} · {plural(countSets(t.exercises), "set")}
-                    </span>
-                  </span>
-                  <span className="flex shrink-0 items-center gap-1 text-sm font-medium">
-                    Start
-                    <Icon name="arrow-right" size={18} />
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <TemplateStartList onStart={start} />
         )}
       </section>
     </>
@@ -161,12 +139,15 @@ function ActiveWorkoutView({ active, onSaved }: { active: ActiveWorkout; onSaved
           sets: [newSet()],
         })}
         renderExtra={(ex, update) => (
-          <VariationPicker
-            exerciseId={ex.exerciseId}
-            exerciseName={exerciseName(ex.exerciseId)}
-            variationId={ex.variationId}
-            onChange={(variationId) => update({ ...ex, variationId })}
-          />
+          <>
+            <VariationPicker
+              exerciseId={ex.exerciseId}
+              exerciseName={exerciseName(ex.exerciseId)}
+              variationId={ex.variationId}
+              onChange={(variationId) => update({ ...ex, variationId })}
+            />
+            <LastTimeHint exerciseId={ex.exerciseId} variationId={ex.variationId} />
+          </>
         )}
         trackDone
         emptyTitle="Nothing logged yet."

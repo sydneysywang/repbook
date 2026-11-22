@@ -47,9 +47,21 @@ export function validateTemplate(
   else if (isNameTaken(draft.name, templates, exceptId))
     problems.push(`You already have a template called "${draft.name.trim()}".`);
 
-  if (draft.exercises.length === 0) problems.push("Add at least one exercise.");
+  checkExercises(draft.exercises, exerciseName, problems, incompleteSetIds);
 
-  for (const ex of draft.exercises) {
+  return { problems, incompleteSetIds };
+}
+
+/** At least one exercise, each with at least one set, every set with reps and weight. */
+function checkExercises(
+  exercises: { exerciseId: string; sets: SetEntry[] }[],
+  exerciseName: (exerciseId: string) => string,
+  problems: string[],
+  incompleteSetIds: Set<string>,
+) {
+  if (exercises.length === 0) problems.push("Add at least one exercise.");
+
+  for (const ex of exercises) {
     if (ex.sets.length === 0) {
       problems.push(`${exerciseName(ex.exerciseId)}: add at least one set.`);
       continue;
@@ -66,7 +78,16 @@ export function validateTemplate(
       problems.push(`${exerciseName(ex.exerciseId)}, set ${i + 1}: ${missing}.`);
     });
   }
+}
 
+/** Editing a saved workout: same completeness rule as templates (no ticks on saved workouts). */
+export function validateWorkoutEdit(
+  exercises: WorkoutExercise[],
+  exerciseName: (exerciseId: string) => string,
+): TemplateValidation {
+  const problems: string[] = [];
+  const incompleteSetIds = new Set<string>();
+  checkExercises(exercises, exerciseName, problems, incompleteSetIds);
   return { problems, incompleteSetIds };
 }
 

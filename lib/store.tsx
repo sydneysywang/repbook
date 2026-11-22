@@ -27,6 +27,7 @@ import {
   isVariationNameTaken,
   prepareWorkoutForSave,
   validateTemplate,
+  validateWorkoutEdit,
   type TemplateDraft,
 } from "./validation";
 
@@ -78,6 +79,9 @@ type StoreValue = {
   saveWorkoutAsTemplate: (workoutId: string, name: string) => ActionResult;
   /** Replace a template's exercises and sets with a saved workout's; keeps its name. */
   updateTemplateFromWorkout: (templateId: string, workoutId: string) => ActionResult;
+  /** Edit a past workout's exercises, variations and sets; every set needs reps and weight. */
+  updateWorkout: (id: string, exercises: WorkoutExercise[]) => ActionResult;
+  deleteWorkout: (id: string) => void;
 
   /** An exercise's variations that haven't been deleted (for pickers). */
   variationsFor: (exerciseId: string) => Variation[];
@@ -334,6 +338,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           name: template.name,
           exercises: templateExercisesFrom(workout.exercises),
         });
+      },
+
+      updateWorkout: (id, exercises) => {
+        if (!data.workouts.some((w) => w.id === id))
+          return { ok: false, problems: ["This workout no longer exists."] };
+        const problems = validateWorkoutEdit(exercises, exerciseName).problems;
+        if (problems.length) return { ok: false, problems };
+        // Saved workouts never store the tick.
+        const clean = exercises.map((ex) => ({
+          ...ex,
+          sets: ex.sets.map(({ id: setId, reps, weight }) => ({ id: setId, reps, weight })),
+        }));
+        update((d) => ({
+          ...d,
+          workouts: d.workouts.map((w) => (w.id === id ? { ...w, exercises: clean } : w)),
+        }));
+        return { ok: true, id };
+      },
+
+      deleteWorkout: (id) => {
+        update((d) => ({ ...d, workouts: d.workouts.filter((w) => w.id !== id) }));
       },
 
       variationsFor: (exerciseId) =>
