@@ -11,7 +11,17 @@ import {
 } from "react";
 import { BUILT_IN_EXERCISES } from "./exercise-library";
 import { emptyData, loadData, saveData } from "./storage";
-import type { AppData, Exercise, Variation } from "./types";
+import type { AppData, Exercise, MuscleGroup, Variation } from "./types";
+import {
+  TEMPLATE_LIMIT_MESSAGE,
+  canCreateTemplate,
+  cloneName,
+  isExerciseNameTaken,
+  validateTemplate,
+  type TemplateDraft,
+} from "./validation";
+
+export type ActionResult = { ok: true; id: string } | { ok: false; problems: string[] };
 
 /**
  * - "corrupt": saved data couldn't be read. We stop saving so nothing is lost
@@ -36,6 +46,18 @@ type StoreValue = {
   /** Throw away unreadable saved data and start with an empty app. */
   resetData: () => void;
   dismissStorageError: () => void;
+
+  /** Display name for any exercise id, including deleted custom ones. */
+  exerciseName: (id: string) => string;
+
+  createTemplate: (draft: TemplateDraft) => ActionResult;
+  updateTemplate: (id: string, draft: TemplateDraft) => ActionResult;
+  cloneTemplate: (id: string) => ActionResult;
+  deleteTemplate: (id: string) => void;
+
+  addCustomExercise: (name: string, muscleGroup: MuscleGroup) => ActionResult;
+  renameCustomExercise: (id: string, name: string) => ActionResult;
+  deleteCustomExercise: (id: string) => void;
 };
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -85,6 +107,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const allExercises = [...BUILT_IN_EXERCISES, ...data.customExercises];
     const exerciseById = new Map(allExercises.map((e) => [e.id, e]));
     const variationById = new Map(data.variations.map((v) => [v.id, v]));
+    const exerciseName = (id: string) => exerciseById.get(id)?.name ?? "Unknown exercise";
+    const now = () => new Date().toISOString();
+
+    // Rules are checked against the data this render sees; user actions are
+    // one tap at a time, so that is always the latest saved state.
+    const checkDraft = (draft: TemplateDraft, exceptId?: string): string[] =>
+      validateTemplate(draft, data.templates, exerciseName, exceptId).problems;
+
+    const cleanName = (name: string) => name.trim().replace(/\s+/g, " ");
+
     return {
       ready,
       data,
@@ -95,6 +127,100 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       update,
       resetData,
       dismissStorageError,
+      exerciseName,
+
+      createTemplate: (draft) => {
+        if (!canCreateTemplate(data.templates)) return { ok: false, problems: [TEMPLATE_LIMIT_MESSAGE] };
+        const problems = checkDraft(draft);
+        if (problems.length) return { ok: false, problems };
+        const id = crypto.randomUUID();
+        const t = now();
+        update((d) => ({
+          ...d,
+          templates: [
+            ...d.templates,
+            { id, name: cleanName(draft.name), exercises: draft.exercises, createdAt: t, updatedAt: t },
+          ],
+        }));
+        return { ok: true, id };
+      },
+
+      updateTemplate: (id, draft) => {
+        if (!data.templates.some((t) => t.id === id))
+          return { ok: false, problems: ["This template no longer exists."] };
+        const problems = checkDraft(draft, id);
+        if (problems.length) return { ok: false, problems };
+        update((d) => ({
+          ...d,
+          templates: d.templates.map((t) =>
+            t.id === id
+              ? { ...t, name: cleanName(draft.name), exercises: draft.exercises, updatedAt: now() }
+              : t,
+          ),
+        }));
+        return { ok: true, id };
+      },
+
+      cloneTemplate: (id) => {
+        const source = data.templates.find((t) => t.id === id);
+        if (!source) return { ok: false, problems: ["This template no longer exists."] };
+        if (!canCreateTemplate(data.templates)) return { ok: false, problems: [TEMPLATE_LIMIT_MESSAGE] };
+        const newId = crypto.randomUUID();
+        const t = now();
+        const copy = {
+          id: newId,
+          name: cloneName(source.name, data.templates),
+          // Fresh ids so the copy is fully independent.
+          exercises: source.exercises.map((ex) => ({
+            ...ex,
+            id: crypto.randomUUID(),
+            sets: ex.sets.map((s) => ({ ...s, id: crypto.randomUUID() })),
+          })),
+          createdAt: t,
+          updatedAt: t,
+        };
+        update((d) => ({ ...d, templates: [...d.templates, copy] }));
+        return { ok: true, id: newId };
+      },
+
+      deleteTemplate: (id) => {
+        update((d) => ({ ...d, templates: d.templates.filter((t) => t.id !== id) }));
+      },
+
+      addCustomExercise: (name, muscleGroup) => {
+        const clean = cleanName(name);
+        if (!clean) return { ok: false, problems: ["Give the exercise a name."] };
+        if (isExerciseNameTaken(clean, allExercises))
+          return { ok: false, problems: [`"${clean}" is already in the list.`] };
+        const id = crypto.randomUUID();
+        update((d) => ({
+          ...d,
+          customExercises: [...d.customExercises, { id, name: clean, muscleGroup, builtIn: false }],
+        }));
+        return { ok: true, id };
+      },
+
+      renameCustomExercise: (id, name) => {
+        const ex = exerciseById.get(id);
+        if (!ex || ex.builtIn) return { ok: false, problems: ["Built-in exercises can't be renamed."] };
+        const clean = cleanName(name);
+        if (!clean) return { ok: false, problems: ["Give the exercise a name."] };
+        if (isExerciseNameTaken(clean, allExercises, id))
+          return { ok: false, problems: [`"${clean}" is already in the list.`] };
+        update((d) => ({
+          ...d,
+          customExercises: d.customExercises.map((e) => (e.id === id ? { ...e, name: clean } : e)),
+        }));
+        return { ok: true, id };
+      },
+
+      deleteCustomExercise: (id) => {
+        // Soft delete: hidden from pickers; templates and past workouts keep the name.
+        update((d) => ({
+          ...d,
+          customExercises: d.customExercises.map((e) => (e.id === id ? { ...e, deleted: true } : e)),
+        }));
+      },
     };
   }, [ready, data, storageError, update, resetData, dismissStorageError]);
 

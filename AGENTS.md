@@ -100,7 +100,7 @@ No blank screens: every list has a readable empty state (e.g. "No workouts yet �
 - `lib/store.tsx` — React context provider (wrapped in `app/layout.tsx`) exposing data and actions for workouts, templates, exercises, variations and the active workout. Shows a brief loading state until browser data has been read, to avoid flicker and hydration mismatches.
 - `lib/validation.ts` — template completeness, unique names, 20 limit, workout finish rules.
 - `lib/summary.ts` — duration, set count, volume, weekly/monthly counts, "last time" lookup.
-- `components/` — AppShell/nav, ExerciseEditor (shared by the active workout, history edit and template edit), ExercisePicker, VariationPicker, SetRow, EmptyState, NotFoundMessage, ConfirmDialog, plus design pieces: Glow (page-top blob), GlowOrb (big-moment orb), Icon (inline SVG set), Wordmark.
+- `components/` — AppShell/nav, ExerciseEditor (shared by the active workout, history edit and template edit), ExercisePicker, VariationPicker, SetRow, EmptyState, NotFoundMessage, Dialog (native `<dialog>`, portalled to `<body>` and mounted only while open, so its forms never nest in a page form) + ConfirmDialog, TemplateForm, plus design pieces: Glow (page-top blob), GlowOrb (big-moment orb), Icon (inline SVG set), Wordmark.
 - `app/not-found.tsx` handles unknown addresses. Detail pages show the same NotFoundMessage when an id isn't in storage.
 - Next.js 16 note: `cacheComponents` is on in `next.config.ts`, so dynamic route `params` are runtime data. Detail pages are client components that read the id with `useParams`. Generate ids with `crypto.randomUUID()`.
 
@@ -145,7 +145,7 @@ Each session is built in a fresh Claude Code session, using plan mode first.
 
 - [x] Session 0 — spec saved to AGENTS.md
 - [x] Session 1 — Foundation & shell
-- [ ] Session 2 — Templates + exercise picker
+- [x] Session 2 — Templates + exercise picker
 - [ ] Session 3 — Active workout
 - [ ] Session 4 — Finish flow ↔ templates
 - [ ] Session 5 — History & Home
