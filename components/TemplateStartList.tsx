@@ -18,7 +18,7 @@ export function TemplateStartList({ onStart, templates: shown, hideLastRule = fa
   const { data } = useStore();
   const templates =
     shown ??
-    [...data.templates].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    [...data.templates].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true }));
 
   return (
     <ul className="mt-3 border-t border-rule">

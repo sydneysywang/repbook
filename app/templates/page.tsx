@@ -12,7 +12,7 @@ import { TEMPLATE_LIMIT, TEMPLATE_LIMIT_MESSAGE, canCreateTemplate } from "@/lib
 export default function TemplatesPage() {
   const { data } = useStore();
   const templates = [...data.templates].sort((a, b) =>
-    a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+    a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true }),
   );
   const canCreate = canCreateTemplate(data.templates);
 

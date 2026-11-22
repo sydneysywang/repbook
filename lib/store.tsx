@@ -364,7 +364,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       variationsFor: (exerciseId) =>
         data.variations
           .filter((v) => v.exerciseId === exerciseId && !v.deleted)
-          .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
+          .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true })),
 
       addVariation: (exerciseId, name) => {
         const clean = cleanName(name);

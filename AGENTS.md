@@ -151,7 +151,7 @@ Each session is built in a fresh Claude Code session.
 - [x] Session 3 — Active workout
 - [x] Session 4 — Finish flow ↔ templates
 - [x] Session 5 — History & Home
-- [ ] Session 6 — Polish & final check
+- [x] Session 6 — Polish & final check
 
 ## Verification
 
