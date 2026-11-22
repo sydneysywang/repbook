@@ -41,6 +41,16 @@ Repbook is a workout logger. User persona: a busy professional, beginner to inte
 - The project `.npmrc` sets `min-release-age=7`: npm won't install package versions published less than 7 days ago.
 - Work only on the build session the user asks for (see "Build sessions"). When it's done, tick it off under "Progress".
 
+## Dev server: styles not updating
+
+Turbopack keeps processed files in `.next/dev` and can keep serving an old `app/globals.css` even after a restart (seen in Session 1: pages showed the new markup but the starter stylesheet). It is intermittent: one `globals.css` edit may hot-reload fine and the next may not, with no error in the log. At the start of each session, and after editing `app/globals.css` if the change doesn't show up, from the `repbook/` folder:
+
+1. **Stop the dev server**: Ctrl+C in its terminal (or `kill $(lsof -ti :3000 -sTCP:LISTEN)` if it runs in the background). It must be stopped first because it is using the folder.
+2. **Delete the dev cache**: `rm -rf .next/dev`. Safe: it only holds copies the server rebuilds; source code and in-browser workout data are untouched.
+3. **Start it again**: `npm run dev`, then reload the browser.
+
+Check it worked: the served stylesheet should contain the current colour tokens, e.g. `curl -s localhost:3000/ | grep -oE '/_next/static/[^"]+\.css' | head -1 | xargs -I{} curl -s localhost:3000{} | grep -c f3d8c7` prints a number above 0. `npm run build` doesn't use this cache, so a passing build doesn't prove the dev server is up to date.
+
 ## Agreed decisions
 
 - **Storage:** browser localStorage. Not chosen: IndexedDB (much more code or an extra library, no benefit at this size, same Safari 7-day deletion rule), sessionStorage (wiped when the tab closes), cookies (~4 KB, sent to servers). Show a friendly message if storage is full or the saved data can't be read.
@@ -102,19 +112,21 @@ No blank screens: every list has a readable empty state (e.g. "No workouts yet �
 
 ## Design — "Warm glow"
 
-Reference screenshots are in `design-inspo/`; open them before styling. Aim for energetic but calm, not a "gym bro" app.
+Reference screenshots are in `design-inspo/`; open them before styling. The colour palette and grain follow `Screenshot 2026-11-22 at 19.26.25.png` (peach page, orange → purple glow, film grain). Aim for energetic but calm, not a "gym bro" app.
 
 - **Colours** (CSS variables in `app/globals.css`, exposed to Tailwind via `@theme inline`):
-  - Light: background cream `#F6EFE6`, surface `#FBF7F2`, ink `#111111`, muted text `#6B6560`, rule lines = ink at ~15% opacity.
-  - Glow colours: orange `#F26B3A`, red `#E8453C`, violet `#6D4AE8`, dusty blue `#8FA9C4`.
-  - Dark: background `#121011`, ink `#F3EDE6`, glow at ~half opacity, primary buttons invert (cream fill, dark text).
+  - Light: background peach-pink `#F3D8C7`, surface `#F8E6DA`, ink `#111111`, muted text `#6A5650`, rule lines = ink at ~15% opacity.
+  - Glow colours: orange `#F07A3A`, coral red `#E5484D`, magenta `#C2509B`, purple `#8E63C4`, periwinkle `#6F86C8`.
+  - Dark: background plum-black `#16111A`, surface `#1F1824`, ink `#F4E6DC`, glow at ~half opacity, primary buttons invert (light fill, dark text).
+- **Background wash:** the page background has a faint orange wash in the bottom-left and purple in the bottom-right (fixed, on `body`).
+- **Grain:** film-grain overlay over the whole page: one fixed `div.grain` in `app/layout.tsx`, an inline SVG `feTurbulence` noise as a CSS background, `mix-blend-mode: overlay`, ~50% opacity (~30% in dark mode). Decorative (`aria-hidden`, `pointer-events-none`). No image files, no library.
 - **Type:** Space Grotesk via `next/font/google` (built into Next.js, not a new library), replacing Geist Sans; keep Geist Mono. Page titles large, bold, tight tracking (e.g. "Ready to train?"). Numbers (reps, weight, counts) use `tabular-nums`. Wordmark: lowercase "repbook." with the full stop in orange.
-- **Glow:** a soft blurred orange→red→violet blob (layered `radial-gradient`s + `blur`) at the top of each page, behind the title. Decorative only (`aria-hidden`, `pointer-events-none`). Text must never depend on the glow for contrast — keep ink on cream.
+- **Glow:** a soft blurred orange→coral→magenta→purple→periwinkle blob (layered `radial-gradient`s + `blur`, about 44rem × 20rem) at the top of each page, behind the title. Keep it this size: a larger version was tried and felt too big. Decorative only (`aria-hidden`, `pointer-events-none`). Text must never depend on the glow for contrast — keep ink on peach.
 - **Shapes and lines:** thin 1px rule lines between sections instead of heavy cards. Primary buttons: square corners (≤4px radius), black fill, cream text, with a → arrow. Secondary buttons: 1px outline. Tap targets at least 44px.
 - **Icons:** simple inline SVG line icons (no icon library). The ✱ asterisk is a recurring accent (section headings, empty states).
 - **Tabs:** phone bottom tabs show icon + label; active tab is ink with a short underline bar, others muted. The laptop top bar uses the same underline style. Content sits in a centred column (~640px).
 - **Empty states:** ✱ + a short bold line + one muted helper line, left-aligned, not boxed.
-- **Glow orb (big moments):** a full-screen centred orb (violet→red; grey/black variant in dark mode) behind a short message. Used for the "Workout saved" screen (Session 4) and on About. Session 1 builds the reusable `GlowOrb` component and uses it only on About.
+- **Glow orb (big moments):** a full-screen centred orb (coral core → magenta → purple with a periwinkle crescent; plum→black variant in dark mode) behind a short message. Used for the "Workout saved" screen (Session 4) and on About. Session 1 builds the reusable `GlowOrb` component and uses it only on About.
 
 ## Build sessions
 
@@ -132,7 +144,7 @@ Each session is built in a fresh Claude Code session, using plan mode first.
 ## Progress
 
 - [x] Session 0 — spec saved to AGENTS.md
-- [ ] Session 1 — Foundation & shell
+- [x] Session 1 — Foundation & shell
 - [ ] Session 2 — Templates + exercise picker
 - [ ] Session 3 — Active workout
 - [ ] Session 4 — Finish flow ↔ templates
