@@ -20,6 +20,13 @@ export type SavedWorkoutInfo = {
   droppedSets: number;
 };
 
+/** The plain "Saved · …" line underneath keeps the confirmation clear. */
+const SAVED_HEADINGS = [
+  "You showed up. That's the hard part.",
+  "Another one for the book.",
+  "Nice work.",
+];
+
 type Outcome =
   | { kind: "created"; templateId: string; name: string }
   | { kind: "updated"; templateId: string; name: string }
@@ -39,6 +46,9 @@ export function WorkoutSaved({ saved, onDone }: { saved: SavedWorkoutInfo; onDon
   const startedFromTemplate = saved.templateId !== null;
   const template = saved.templateId ? data.templates.find((t) => t.id === saved.templateId) : undefined;
   const atLimit = !canCreateTemplate(data.templates);
+  // Steps through the list by workout count: varies from one workout to the
+  // next, but stays put while this screen re-renders.
+  const heading = SAVED_HEADINGS[data.workouts.length % SAVED_HEADINGS.length];
 
   function update() {
     if (!template) return;
@@ -53,9 +63,9 @@ export function WorkoutSaved({ saved, onDone }: { saved: SavedWorkoutInfo; onDon
     <>
       <GlowOrb compact>
         <div role="status" className="max-w-sm text-center">
-          <p className="text-4xl font-bold tracking-tight md:text-5xl">Workout saved.</p>
+          <p className="text-4xl font-bold tracking-tight text-balance md:text-5xl">{heading}</p>
           <p className="mt-3 text-muted tabular-nums">
-            {plural(saved.exerciseCount, "exercise")} · {plural(saved.setCount, "set")}
+            Saved · {plural(saved.exerciseCount, "exercise")} · {plural(saved.setCount, "set")}
           </p>
           {saved.droppedSets > 0 && (
             <p className="mt-1 text-sm text-muted tabular-nums">
