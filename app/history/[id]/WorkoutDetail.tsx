@@ -47,7 +47,6 @@ export function WorkoutDetail() {
     <>
       <PageHeader
         title={formatDate(workout.startedAt)}
-        back={{ href: "/history", label: "History" }}
         subtitle={
           <span className="tabular-nums">
             {formatClock(workout.startedAt)}–{formatClock(workout.finishedAt)} ·{" "}

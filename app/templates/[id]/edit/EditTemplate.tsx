@@ -28,7 +28,6 @@ export function EditTemplate() {
     <>
       <PageHeader
         title="Edit template"
-        back={{ href: `/templates/${template.id}`, label: template.name }}
       />
       <TemplateForm
         key={template.id}
