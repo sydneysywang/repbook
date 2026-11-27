@@ -164,7 +164,7 @@ function TopBarLinks({ pathname }: { pathname: string | null }) {
   const running = useWorkoutRunning();
   const onLinkClick = useLeaveLinkClick();
   return (
-    <ul className="nav-dock flex items-stretch gap-1 rounded-[4px] bg-nav p-1">
+    <ul className="flex items-stretch gap-1 p-1">
       {TOP_BAR.map((item) => {
         const active = isActive(item.href, pathname);
         return (
