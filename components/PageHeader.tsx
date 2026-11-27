@@ -8,7 +8,7 @@ type PageHeaderProps = {
 
 /**
  * Page title with the warm glow behind it, followed by a rule line.
- * The "Back" control lives in the sticky app header (see AppShell).
+ * The "Back" button is rendered by AppShell at the top of the page content, above this.
  */
 export function PageHeader({ title, subtitle }: PageHeaderProps) {
   return (

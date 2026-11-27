@@ -7,6 +7,7 @@ import { Button } from "@/components/Button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ExerciseEditor, newSet } from "@/components/ExerciseEditor";
 import { Icon } from "@/components/Icon";
+import { useLeaveGuard } from "@/components/LeaveGuard";
 import { NotFoundMessage } from "@/components/NotFoundMessage";
 import { PageHeader } from "@/components/PageHeader";
 import { VariationPicker } from "@/components/VariationPicker";
@@ -149,6 +150,8 @@ function EditWorkout({ workout, onDone }: { workout: Workout; onDone: () => void
   const [exercises, setExercises] = useState<WorkoutExercise[]>(workout.exercises);
   const [showProblems, setShowProblems] = useState(false);
   const [saveProblems, setSaveProblems] = useState<string[]>([]);
+  // Back or a nav tab asks before throwing away unsaved edits.
+  useLeaveGuard(exercises !== workout.exercises);
 
   const validation = validateWorkoutEdit(exercises, exerciseName);
   const problems = showProblems ? (validation.problems.length ? validation.problems : saveProblems) : [];

@@ -7,6 +7,7 @@ import { validateTemplate, type TemplateDraft } from "@/lib/validation";
 import { Button, ButtonLink } from "./Button";
 import { ExerciseEditor, newSet } from "./ExerciseEditor";
 import { Icon } from "./Icon";
+import { useLeaveGuard } from "./LeaveGuard";
 
 type TemplateFormProps = {
   initial: TemplateDraft;
@@ -23,6 +24,9 @@ export function TemplateForm({ initial, templateId, cancelHref, submitLabel, onS
   // Problems only show after the first save attempt, then update live as they're fixed.
   const [attempted, setAttempted] = useState(false);
   const [saveProblems, setSaveProblems] = useState<string[]>([]);
+  // Back or a nav tab asks before throwing away unsaved edits.
+  const [startDraft] = useState(initial);
+  useLeaveGuard(draft !== startDraft);
 
   const validation = validateTemplate(draft, data.templates, exerciseName, templateId);
   const problems = attempted ? (validation.problems.length ? validation.problems : saveProblems) : [];

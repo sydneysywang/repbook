@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Suspense, useEffect, type ReactNode } from "react";
 import { useStore } from "@/lib/store";
 import { Button } from "./Button";
 import { Icon, type IconName } from "./Icon";
+import { LeaveGuardProvider, useLeave, useLeaveLinkClick } from "./LeaveGuard";
 import { Wordmark } from "./Wordmark";
 
 type NavItem = { href: string; label: string; icon: IconName };
@@ -35,44 +36,61 @@ function useWorkoutRunning(): boolean {
 
 /* ---------- Back ---------- */
 
-/** The main tab pages; every other address gets a "Back" control in the header. */
+/** The main tab pages; every other address gets a "Back" button above its title. */
 function isTabRoot(pathname: string): boolean {
   return TABS.some((tab) => tab.href === pathname);
 }
 
-/** One level up the address, e.g. /templates/abc/edit → /templates/abc. */
-function parentPath(pathname: string): string {
-  const parts = pathname.split("/").filter(Boolean);
-  parts.pop();
-  return `/${parts.join("/")}`;
+/** The tab a page belongs to, e.g. /history/abc → /history; /about → Home. */
+function sectionTab(pathname: string): string {
+  const tab = TABS.find((t) => t.href !== "/" && isActive(t.href, pathname));
+  return tab?.href ?? "/";
 }
 
 /**
- * Addresses visited in this tab, so "Back" knows whether there's an in-app page
- * to return to (otherwise it goes one level up instead of leaving Repbook).
+ * "Back" always returns to the main tab the user last came from, however many
+ * pages (or in-place edits) they went through since, e.g. Home → a past
+ * workout → Back = Home, but History → a past workout → Back = History.
+ * It never uses browser history, so it can't loop or leave Repbook.
+ * Kept in sessionStorage so a refresh remembers it; a page opened directly
+ * falls back to its own section's tab.
  */
-const visited: string[] = [];
+const ORIGIN_KEY = "repbook:back-to";
+let lastPathname: string | null = null;
 
-function useTrackVisits(pathname: string) {
+function readOrigin(): string | null {
+  try {
+    return sessionStorage.getItem(ORIGIN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function useTrackOriginTab(pathname: string) {
   useEffect(() => {
-    if (visited.at(-1) === pathname) return;
-    if (visited.at(-2) === pathname) visited.pop();
-    else visited.push(pathname);
+    if (lastPathname !== null && lastPathname !== pathname && isTabRoot(lastPathname)) {
+      try {
+        sessionStorage.setItem(ORIGIN_KEY, lastPathname);
+      } catch {
+        // Storage blocked: Back falls back to the section's tab.
+      }
+    }
+    lastPathname = pathname;
   }, [pathname]);
 }
 
-function canGoBackInApp(): boolean {
-  // The Navigation API knows about router.replace(); fall back to our own list.
-  const nav = (window as { navigation?: { canGoBack?: boolean } }).navigation;
-  if (typeof nav?.canGoBack === "boolean") return nav.canGoBack && visited.length > 1;
-  return visited.length > 1;
+function backTarget(pathname: string): string {
+  const origin = readOrigin();
+  if (origin && origin !== pathname && isTabRoot(origin)) return origin;
+  const section = sectionTab(pathname);
+  return section === pathname ? "/" : section; // e.g. a running /workout → Home
 }
 
 function BackButton() {
   const pathname = usePathname();
-  const router = useRouter();
   const running = useWorkoutRunning();
-  useTrackVisits(pathname);
+  const leave = useLeave();
+  useTrackOriginTab(pathname);
   // A running workout is a page you were sent to (from Home, a template or the
   // start screen), so it gets "Back" even though /workout is a tab. Going back
   // leaves the workout running; the resume bar brings you back to it.
@@ -82,7 +100,7 @@ function BackButton() {
   return (
     <button
       type="button"
-      onClick={() => (canGoBackInApp() ? router.back() : router.push(parentPath(pathname)))}
+      onClick={() => leave(backTarget(pathname))}
       className="relative z-10 mb-4 inline-flex min-h-11 items-center gap-2 rounded-[4px] border border-rule px-3 text-sm font-medium text-ink hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
     >
       <Icon name="arrow-left" size={18} />
@@ -95,6 +113,7 @@ function BackButton() {
 
 function BottomTabLinks({ pathname }: { pathname: string | null }) {
   const running = useWorkoutRunning();
+  const onLinkClick = useLeaveLinkClick();
   return (
     <ul className="grid grid-cols-4">
       {TABS.map((tab) => {
@@ -103,6 +122,7 @@ function BottomTabLinks({ pathname }: { pathname: string | null }) {
           <li key={tab.href}>
             <Link
               href={tab.href}
+              onClick={(e) => onLinkClick(e, tab.href)}
               aria-current={active ? "page" : undefined}
               className={`relative flex min-h-16 flex-col items-center justify-center gap-1 overflow-hidden text-xs font-medium focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-on-nav ${
                 active ? "text-on-nav" : "text-on-nav/65 hover:text-on-nav"
@@ -142,6 +162,7 @@ function ActiveBottomTabs() {
 
 function TopBarLinks({ pathname }: { pathname: string | null }) {
   const running = useWorkoutRunning();
+  const onLinkClick = useLeaveLinkClick();
   return (
     <ul className="nav-dock flex items-stretch gap-1 rounded-[4px] bg-nav p-1">
       {TOP_BAR.map((item) => {
@@ -150,6 +171,7 @@ function TopBarLinks({ pathname }: { pathname: string | null }) {
           <li key={item.href} className="flex">
             <Link
               href={item.href}
+              onClick={(e) => onLinkClick(e, item.href)}
               aria-current={active ? "page" : undefined}
               className={`relative flex min-h-10 items-center gap-2 overflow-hidden rounded-[2px] px-3.5 text-sm font-medium focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-on-nav ${
                 active ? "text-on-nav" : "text-on-nav/65 hover:text-on-nav"
@@ -186,11 +208,13 @@ function ActiveTopBarLinks() {
 /** "Workout in progress · Resume" while a workout runs and the user is elsewhere. */
 function ResumeBar({ pathname, className = "" }: { pathname: string | null; className?: string }) {
   const running = useWorkoutRunning();
+  const onLinkClick = useLeaveLinkClick();
   if (!running || pathname === null || isActive("/workout", pathname)) return null;
   return (
     <div className={`border-b border-on-nav/15 ${className}`}>
       <Link
         href="/workout"
+        onClick={(e) => onLinkClick(e, "/workout")}
         className="flex min-h-11 items-center justify-between gap-3 px-4 text-sm font-medium text-on-nav focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-on-nav"
       >
         <span className="flex items-center gap-2">
@@ -211,8 +235,8 @@ function LaptopResumeBar() {
   const running = useWorkoutRunning();
   if (!running || isActive("/workout", pathname)) return null;
   return (
-    <div className="fixed inset-x-0 bottom-6 z-20 hidden px-8 md:block">
-      <div className="nav-dock mx-auto max-w-[640px] rounded-[4px] bg-nav">
+    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-20 hidden px-8 md:block">
+      <div className="nav-dock pointer-events-auto mx-auto max-w-[640px] rounded-[4px] bg-nav">
         <ResumeBar pathname={pathname} className="border-b-0" />
       </div>
     </div>
@@ -268,20 +292,30 @@ function StorageBanner() {
 /* ---------- Shell ---------- */
 
 export function AppShell({ children }: { children: ReactNode }) {
+  return (
+    <LeaveGuardProvider>
+      <Shell>{children}</Shell>
+    </LeaveGuardProvider>
+  );
+}
+
+function Shell({ children }: { children: ReactNode }) {
   const { ready } = useStore();
   const running = useWorkoutRunning();
+  const onLinkClick = useLeaveLinkClick();
 
   return (
     <div className="flex min-h-dvh flex-col overflow-x-clip">
       {/* Phone header */}
       <header className="sticky top-0 z-20 border-b border-rule bg-bg/85 backdrop-blur-md md:hidden">
         <div className="mx-auto flex h-14 max-w-[640px] items-center justify-between px-5">
-          <Link href="/" aria-label="Repbook home">
+          <Link href="/" aria-label="Repbook home" onClick={(e) => onLinkClick(e, "/")}>
             <Wordmark />
           </Link>
           <Link
             href="/about"
             aria-label="About Repbook"
+            onClick={(e) => onLinkClick(e, "/about")}
             className="-mr-2 flex size-11 items-center justify-center text-ink"
           >
             <Icon name="info" size={24} />
@@ -292,7 +326,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Laptop top bar */}
       <header className="sticky top-0 z-20 hidden border-b border-rule bg-bg/85 backdrop-blur-md md:block">
         <div className="mx-auto flex h-18 max-w-[960px] items-center gap-4 px-8">
-          <Link href="/" aria-label="Repbook home">
+          <Link href="/" aria-label="Repbook home" onClick={(e) => onLinkClick(e, "/")}>
             <Wordmark />
           </Link>
           <nav aria-label="Main" className="ml-auto">
@@ -331,9 +365,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Phone tab dock (with the resume bar on top of it) */}
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-20 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden"
       >
-        <div className="nav-dock mx-auto max-w-[640px] overflow-hidden rounded-[4px] bg-nav">
+        {/* Only the dock itself takes taps; the clear gutters around it don't. */}
+        <div className="nav-dock pointer-events-auto mx-auto max-w-[640px] overflow-hidden rounded-[4px] bg-nav">
           <Suspense fallback={<BottomTabLinks pathname={null} />}>
             <ActiveBottomTabs />
           </Suspense>
