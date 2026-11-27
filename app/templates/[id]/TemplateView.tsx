@@ -50,7 +50,6 @@ export function TemplateView() {
     <>
       <PageHeader
         title={template.name}
-        back={{ href: "/templates", label: "Templates" }}
         subtitle={
           <span className="tabular-nums">
             {plural(template.exercises.length, "exercise")} · {plural(countSets(template.exercises), "set")}

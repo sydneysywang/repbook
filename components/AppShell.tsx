@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Suspense, type ReactNode } from "react";
+import { Suspense, useEffect, type ReactNode } from "react";
 import { useStore } from "@/lib/store";
 import { Button } from "./Button";
 import { Icon, type IconName } from "./Icon";
+import { LeaveGuardProvider, useLeave, useLeaveLinkClick } from "./LeaveGuard";
 import { Wordmark } from "./Wordmark";
 
 type NavItem = { href: string; label: string; icon: IconName };
@@ -24,8 +25,6 @@ function isActive(href: string, pathname: string | null): boolean {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/* ---------- Phone: bottom tabs ---------- */
-
 /** Small orange dot shown on the Workout tab while a workout is running. */
 function RunningDot({ className = "" }: { className?: string }) {
   return <span aria-hidden className={`absolute size-2 rounded-full bg-orange ${className}`} />;
@@ -35,31 +34,112 @@ function useWorkoutRunning(): boolean {
   return useStore().data.activeWorkout !== null;
 }
 
+/* ---------- Back ---------- */
+
+/** The main tab pages; every other address gets a "Back" button above its title. */
+function isTabRoot(pathname: string): boolean {
+  return TABS.some((tab) => tab.href === pathname);
+}
+
+/** The tab a page belongs to, e.g. /history/abc → /history; /about → Home. */
+function sectionTab(pathname: string): string {
+  const tab = TABS.find((t) => t.href !== "/" && isActive(t.href, pathname));
+  return tab?.href ?? "/";
+}
+
+/**
+ * "Back" always returns to the main tab the user last came from, however many
+ * pages (or in-place edits) they went through since, e.g. Home → a past
+ * workout → Back = Home, but History → a past workout → Back = History.
+ * It never uses browser history, so it can't loop or leave Repbook.
+ * Kept in sessionStorage so a refresh remembers it; a page opened directly
+ * falls back to its own section's tab.
+ */
+const ORIGIN_KEY = "repbook:back-to";
+let lastPathname: string | null = null;
+
+function readOrigin(): string | null {
+  try {
+    return sessionStorage.getItem(ORIGIN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function useTrackOriginTab(pathname: string) {
+  useEffect(() => {
+    if (lastPathname !== null && lastPathname !== pathname && isTabRoot(lastPathname)) {
+      try {
+        sessionStorage.setItem(ORIGIN_KEY, lastPathname);
+      } catch {
+        // Storage blocked: Back falls back to the section's tab.
+      }
+    }
+    lastPathname = pathname;
+  }, [pathname]);
+}
+
+function backTarget(pathname: string): string {
+  const origin = readOrigin();
+  if (origin && origin !== pathname && isTabRoot(origin)) return origin;
+  const section = sectionTab(pathname);
+  return section === pathname ? "/" : section; // e.g. a running /workout → Home
+}
+
+function BackButton() {
+  const pathname = usePathname();
+  const running = useWorkoutRunning();
+  const leave = useLeave();
+  useTrackOriginTab(pathname);
+  // A running workout is a page you were sent to (from Home, a template or the
+  // start screen), so it gets "Back" even though /workout is a tab. Going back
+  // leaves the workout running; the resume bar brings you back to it.
+  const onRunningWorkout = running && pathname === "/workout";
+  if (isTabRoot(pathname) && !onRunningWorkout) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={() => leave(backTarget(pathname))}
+      className="relative z-10 mb-4 inline-flex min-h-11 items-center gap-2 rounded-[4px] border border-rule px-3 text-sm font-medium text-ink hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+    >
+      <Icon name="arrow-left" size={18} />
+      Back
+    </button>
+  );
+}
+
+/* ---------- Phone: floating tab dock ---------- */
+
 function BottomTabLinks({ pathname }: { pathname: string | null }) {
   const running = useWorkoutRunning();
+  const onLinkClick = useLeaveLinkClick();
   return (
-    <ul className="mx-auto grid max-w-[640px] grid-cols-4">
+    <ul className="grid grid-cols-4">
       {TABS.map((tab) => {
         const active = isActive(tab.href, pathname);
         return (
           <li key={tab.href}>
             <Link
               href={tab.href}
+              onClick={(e) => onLinkClick(e, tab.href)}
               aria-current={active ? "page" : undefined}
-              className={`flex min-h-14 flex-col items-center justify-center gap-1 pt-2 pb-1.5 text-xs font-medium ${
-                active ? "text-ink" : "text-muted"
+              className={`relative flex min-h-16 flex-col items-center justify-center gap-1 overflow-hidden text-xs font-medium focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-on-nav ${
+                active ? "text-on-nav" : "text-on-nav/65 hover:text-on-nav"
               }`}
             >
+              {active && (
+                <>
+                  <span aria-hidden className="nav-glow-bloom absolute inset-0" />
+                  <span aria-hidden className="nav-glow-strip absolute inset-x-3 top-0 h-[3px]" />
+                </>
+              )}
               <span className="relative">
-                <Icon name={tab.icon} size={22} />
+                <Icon name={tab.icon} size={22} strokeWidth={active ? 2 : 1.6} />
                 {running && tab.href === "/workout" && <RunningDot className="-top-0.5 -right-1" />}
               </span>
-              <span>{tab.label}</span>
+              <span className={`relative ${active ? "font-bold" : ""}`}>{tab.label}</span>
               {running && tab.href === "/workout" && <span className="sr-only">(in progress)</span>}
-              <span
-                aria-hidden
-                className={`h-0.5 w-5 rounded-full ${active ? "bg-ink" : "bg-transparent"}`}
-              />
             </Link>
           </li>
         );
@@ -82,32 +162,35 @@ function ActiveBottomTabs() {
 
 function TopBarLinks({ pathname }: { pathname: string | null }) {
   const running = useWorkoutRunning();
+  const onLinkClick = useLeaveLinkClick();
   return (
-    <ul className="flex items-stretch gap-6">
+    <ul className="nav-dock flex items-stretch gap-1 rounded-[4px] bg-nav p-1">
       {TOP_BAR.map((item) => {
         const active = isActive(item.href, pathname);
         return (
           <li key={item.href} className="flex">
             <Link
               href={item.href}
+              onClick={(e) => onLinkClick(e, item.href)}
               aria-current={active ? "page" : undefined}
-              className={`relative flex min-h-11 items-center text-sm font-medium ${
-                active ? "text-ink" : "text-muted hover:text-ink"
+              className={`relative flex min-h-10 items-center gap-2 overflow-hidden rounded-[2px] px-3.5 text-sm font-medium focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-on-nav ${
+                active ? "text-on-nav" : "text-on-nav/65 hover:text-on-nav"
               }`}
             >
-              {item.label}
+              {active && (
+                <>
+                  <span aria-hidden className="nav-glow-bloom absolute inset-0" />
+                  <span aria-hidden className="nav-glow-strip absolute inset-x-2 bottom-0 h-[3px]" />
+                </>
+              )}
+              <Icon name={item.icon} size={18} strokeWidth={active ? 2 : 1.6} className="relative" />
+              <span className={`relative ${active ? "font-bold" : ""}`}>{item.label}</span>
               {running && item.href === "/workout" && (
                 <>
-                  <RunningDot className="top-2.5 -right-2.5" />
+                  <RunningDot className="top-2 right-1.5" />
                   <span className="sr-only">(in progress)</span>
                 </>
               )}
-              <span
-                aria-hidden
-                className={`absolute inset-x-0 bottom-1 h-0.5 rounded-full ${
-                  active ? "bg-ink" : "bg-transparent"
-                }`}
-              />
             </Link>
           </li>
         );
@@ -125,15 +208,17 @@ function ActiveTopBarLinks() {
 /** "Workout in progress · Resume" while a workout runs and the user is elsewhere. */
 function ResumeBar({ pathname, className = "" }: { pathname: string | null; className?: string }) {
   const running = useWorkoutRunning();
+  const onLinkClick = useLeaveLinkClick();
   if (!running || pathname === null || isActive("/workout", pathname)) return null;
   return (
-    <div className={`border-b border-rule bg-surface/95 ${className}`}>
+    <div className={`border-b border-on-nav/15 ${className}`}>
       <Link
         href="/workout"
-        className="mx-auto flex min-h-11 max-w-[640px] items-center justify-between gap-3 px-5 text-sm font-medium md:px-8"
+        onClick={(e) => onLinkClick(e, "/workout")}
+        className="flex min-h-11 items-center justify-between gap-3 px-4 text-sm font-medium text-on-nav focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-on-nav"
       >
         <span className="flex items-center gap-2">
-          <span aria-hidden className="size-2 rounded-full bg-orange" />
+          <span aria-hidden className="size-2 animate-pulse rounded-full bg-orange motion-reduce:animate-none" />
           Workout in progress
         </span>
         <span className="flex items-center gap-1">
@@ -146,11 +231,15 @@ function ResumeBar({ pathname, className = "" }: { pathname: string | null; clas
 }
 
 function LaptopResumeBar() {
+  const pathname = usePathname();
+  const running = useWorkoutRunning();
+  if (!running || isActive("/workout", pathname)) return null;
   return (
-    <ResumeBar
-      pathname={usePathname()}
-      className="fixed inset-x-0 bottom-0 z-20 hidden border-t border-b-0 backdrop-blur-md md:block"
-    />
+    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-20 hidden px-8 md:block">
+      <div className="nav-dock pointer-events-auto mx-auto max-w-[640px] rounded-[4px] bg-nav">
+        <ResumeBar pathname={pathname} className="border-b-0" />
+      </div>
+    </div>
   );
 }
 
@@ -203,20 +292,30 @@ function StorageBanner() {
 /* ---------- Shell ---------- */
 
 export function AppShell({ children }: { children: ReactNode }) {
+  return (
+    <LeaveGuardProvider>
+      <Shell>{children}</Shell>
+    </LeaveGuardProvider>
+  );
+}
+
+function Shell({ children }: { children: ReactNode }) {
   const { ready } = useStore();
   const running = useWorkoutRunning();
+  const onLinkClick = useLeaveLinkClick();
 
   return (
     <div className="flex min-h-dvh flex-col overflow-x-clip">
       {/* Phone header */}
       <header className="sticky top-0 z-20 border-b border-rule bg-bg/85 backdrop-blur-md md:hidden">
         <div className="mx-auto flex h-14 max-w-[640px] items-center justify-between px-5">
-          <Link href="/" aria-label="Repbook home">
+          <Link href="/" aria-label="Repbook home" onClick={(e) => onLinkClick(e, "/")}>
             <Wordmark />
           </Link>
           <Link
             href="/about"
             aria-label="About Repbook"
+            onClick={(e) => onLinkClick(e, "/about")}
             className="-mr-2 flex size-11 items-center justify-center text-ink"
           >
             <Icon name="info" size={24} />
@@ -226,21 +325,20 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Laptop top bar */}
       <header className="sticky top-0 z-20 hidden border-b border-rule bg-bg/85 backdrop-blur-md md:block">
-        <nav
-          aria-label="Main"
-          className="mx-auto flex h-16 max-w-[960px] items-center justify-between px-8"
-        >
-          <Link href="/" aria-label="Repbook home">
+        <div className="mx-auto flex h-18 max-w-[960px] items-center gap-4 px-8">
+          <Link href="/" aria-label="Repbook home" onClick={(e) => onLinkClick(e, "/")}>
             <Wordmark />
           </Link>
-          <Suspense fallback={<TopBarLinks pathname={null} />}>
-            <ActiveTopBarLinks />
-          </Suspense>
-        </nav>
+          <nav aria-label="Main" className="ml-auto">
+            <Suspense fallback={<TopBarLinks pathname={null} />}>
+              <ActiveTopBarLinks />
+            </Suspense>
+          </nav>
+        </div>
       </header>
 
       <main className={`relative isolate mx-auto w-full max-w-[640px] flex-1 px-5 pt-8 md:px-8 md:pt-14 ${
-          running ? "pb-40 md:pb-28" : "pb-28 md:pb-20"
+          running ? "pb-44 md:pb-32" : "pb-32 md:pb-20"
         }`}>
         <StorageBanner />
         {/* Pages always render (Next validates every segment renders), but
@@ -251,7 +349,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             Loading…
           </p>
         )}
-        <div hidden={!ready}>{children}</div>
+        <div hidden={!ready}>
+          <Suspense fallback={null}>
+            <BackButton />
+          </Suspense>
+          {children}
+        </div>
       </main>
 
       {/* Laptop resume bar */}
@@ -259,14 +362,17 @@ export function AppShell({ children }: { children: ReactNode }) {
         <LaptopResumeBar />
       </Suspense>
 
-      {/* Phone bottom tabs (with the resume bar above them) */}
+      {/* Phone tab dock (with the resume bar on top of it) */}
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-rule bg-bg/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden"
       >
-        <Suspense fallback={<BottomTabLinks pathname={null} />}>
-          <ActiveBottomTabs />
-        </Suspense>
+        {/* Only the dock itself takes taps; the clear gutters around it don't. */}
+        <div className="nav-dock pointer-events-auto mx-auto max-w-[640px] overflow-hidden rounded-[4px] bg-nav">
+          <Suspense fallback={<BottomTabLinks pathname={null} />}>
+            <ActiveBottomTabs />
+          </Suspense>
+        </div>
       </nav>
     </div>
   );

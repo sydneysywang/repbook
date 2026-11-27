@@ -28,6 +28,11 @@
   --orb-accent: #6f86c8;
 
   --grain-opacity: 0.5;
+
+  /* Navigation dock: ink bar on peach. */
+  --nav-bg: #111111;
+  --nav-fg: #f3d8c7;
+  --nav-border: transparent;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -46,6 +51,10 @@
     --orb-outer: #5a3a7a;
     --orb-accent: #e5484d;
     --grain-opacity: 0.3;
+    /* A lifted plum bar, not the inverted cream of primary buttons. */
+    --nav-bg: #271d2e;
+    --nav-fg: #f4e6dc;
+    --nav-border: rgb(244 230 220 / 0.12);
   }
 }
 
@@ -62,6 +71,8 @@
   --color-periwinkle: var(--glow-periwinkle);
   --color-primary: var(--primary-bg);
   --color-on-primary: var(--primary-fg);
+  --color-nav: var(--nav-bg);
+  --color-on-nav: var(--nav-fg);
   --font-sans: var(--font-space-grotesk);
   --font-mono: var(--font-geist-mono);
 }
@@ -86,4 +97,30 @@ body {
   mix-blend-mode: overlay;
   background-size: 180px 180px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Navigation: the glow runs through the active tab (strip + soft bloom). */
+.nav-glow-strip {
+  background: linear-gradient(
+    90deg,
+    var(--glow-orange),
+    var(--glow-red),
+    var(--glow-magenta),
+    var(--glow-purple),
+    var(--glow-periwinkle)
+  );
+}
+
+.nav-glow-bloom {
+  background:
+    radial-gradient(70% 90% at 30% 0%, color-mix(in srgb, var(--glow-orange) 45%, transparent), transparent 70%),
+    radial-gradient(70% 90% at 75% 0%, color-mix(in srgb, var(--glow-purple) 45%, transparent), transparent 70%);
+}
+
+/* The floating dock casts a warm glow instead of a grey shadow. */
+.nav-dock {
+  border: 1px solid var(--nav-border);
+  box-shadow:
+    0 14px 32px -14px color-mix(in srgb, var(--glow-magenta) 70%, transparent),
+    0 4px 12px -6px color-mix(in srgb, var(--glow-orange) 50%, transparent);
 }

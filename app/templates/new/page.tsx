@@ -16,7 +16,7 @@ export default function NewTemplatePage() {
 
   return (
     <>
-      <PageHeader title="New template" back={{ href: "/templates", label: "Templates" }} />
+      <PageHeader title="New template" />
       {canCreateTemplate(data.templates) ? (
         <TemplateForm
           initial={{ name: "", exercises: [] }}
