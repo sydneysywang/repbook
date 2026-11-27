@@ -25,9 +25,9 @@ function isActive(href: string, pathname: string | null): boolean {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** Small orange dot shown on the Workout tab while a workout is running. */
+/** Small orange dot shown on the Workout tab while a workout is running. The thin ring keeps it visible on the peach dock and the active-tab glow in light mode. */
 function RunningDot({ className = "" }: { className?: string }) {
-  return <span aria-hidden className={`absolute size-2 rounded-full bg-orange ${className}`} />;
+  return <span aria-hidden className={`absolute size-2 rounded-full bg-orange ring-[1.5px] ring-ink dark:ring-0 ${className}`} />;
 }
 
 function useWorkoutRunning(): boolean {
@@ -125,7 +125,7 @@ function BottomTabLinks({ pathname }: { pathname: string | null }) {
               onClick={(e) => onLinkClick(e, tab.href)}
               aria-current={active ? "page" : undefined}
               className={`relative flex min-h-16 flex-col items-center justify-center gap-1 overflow-hidden text-xs font-medium focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-on-nav ${
-                active ? "text-on-nav" : "text-on-nav/65 hover:text-on-nav"
+                active ? "text-ink" : "text-ink/65 hover:text-ink"
               }`}
             >
               {active && (
@@ -164,7 +164,7 @@ function TopBarLinks({ pathname }: { pathname: string | null }) {
   const running = useWorkoutRunning();
   const onLinkClick = useLeaveLinkClick();
   return (
-    <ul className="nav-dock flex items-stretch gap-1 rounded-[4px] bg-nav p-1">
+    <ul className="flex items-stretch gap-1">
       {TOP_BAR.map((item) => {
         const active = isActive(item.href, pathname);
         return (
@@ -173,8 +173,8 @@ function TopBarLinks({ pathname }: { pathname: string | null }) {
               href={item.href}
               onClick={(e) => onLinkClick(e, item.href)}
               aria-current={active ? "page" : undefined}
-              className={`relative flex min-h-10 items-center gap-2 overflow-hidden rounded-[2px] px-3.5 text-sm font-medium focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-on-nav ${
-                active ? "text-on-nav" : "text-on-nav/65 hover:text-on-nav"
+              className={`relative flex min-h-10 items-center gap-2 overflow-hidden rounded-[2px] px-3.5 text-sm font-medium focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ink ${
+                active ? "text-ink" : "text-ink/65 hover:text-ink"
               }`}
             >
               {active && (
@@ -218,7 +218,7 @@ function ResumeBar({ pathname, className = "" }: { pathname: string | null; clas
         className="flex min-h-11 items-center justify-between gap-3 px-4 text-sm font-medium text-on-nav focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-on-nav"
       >
         <span className="flex items-center gap-2">
-          <span aria-hidden className="size-2 animate-pulse rounded-full bg-orange motion-reduce:animate-none" />
+          <span aria-hidden className="size-2 animate-pulse rounded-full bg-orange ring-[1.5px] ring-on-nav motion-reduce:animate-none dark:ring-0" />
           Workout in progress
         </span>
         <span className="flex items-center gap-1">
@@ -236,7 +236,7 @@ function LaptopResumeBar() {
   if (!running || isActive("/workout", pathname)) return null;
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-6 z-20 hidden px-8 md:block">
-      <div className="nav-dock pointer-events-auto mx-auto max-w-[640px] rounded-[4px] bg-nav">
+      <div className="nav-dock pointer-events-auto mx-auto max-w-[640px] rounded-[4px] bg-nav/85 backdrop-blur-md">
         <ResumeBar pathname={pathname} className="border-b-0" />
       </div>
     </div>
@@ -368,7 +368,7 @@ function Shell({ children }: { children: ReactNode }) {
         className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden"
       >
         {/* Only the dock itself takes taps; the clear gutters around it don't. */}
-        <div className="nav-dock pointer-events-auto mx-auto max-w-[640px] overflow-hidden rounded-[4px] bg-nav">
+        <div className="nav-dock pointer-events-auto mx-auto max-w-[640px] overflow-hidden rounded-[4px] bg-nav/85 backdrop-blur-md">
           <Suspense fallback={<BottomTabLinks pathname={null} />}>
             <ActiveBottomTabs />
           </Suspense>

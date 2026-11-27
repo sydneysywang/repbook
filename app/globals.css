@@ -29,10 +29,10 @@
 
   --grain-opacity: 0.5;
 
-  /* Navigation dock: ink bar on peach. */
-  --nav-bg: #111111;
-  --nav-fg: #f3d8c7;
-  --nav-border: transparent;
+  /* Navigation dock: same peach as the page, ink text, faint ink border. */
+  --nav-bg: #f3d8c7;
+  --nav-fg: #111111;
+  --nav-border: rgb(17 17 17 / 0.15);
 }
 
 @media (prefers-color-scheme: dark) {
