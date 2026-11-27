@@ -78,8 +78,8 @@ If storage is full, blocked (e.g. some private browsing modes) or the saved data
 You need **Git** and **Node.js 20.9 or newer** (check with `node -v`).
 
 ```bash
-git clone https://github.com/sydneysywang/repbook.git
-cd repbook
+git clone https://github.com/TuringCollegeSubmissions/sywang-AFA.BAI.1.10.git
+cd sywang-AFA.BAI.1.10
 npm install
 npm run dev
 ```
