@@ -53,8 +53,8 @@ Check it worked: the served stylesheet should contain the current colour tokens,
 
 ## Agreed decisions
 
-- **Storage:** browser localStorage. Not chosen: IndexedDB (much more code or an extra library, no benefit at this size, same Safari 7-day deletion rule), sessionStorage (wiped when the tab closes), cookies (~4 KB, sent to servers). Show a friendly message if storage is full or the saved data can't be read.
-- **Sets** record **reps + weight** in kg. Weight 0 is allowed (bodyweight).
+- **Storage:** browser localStorage. Not chosen: IndexedDB (much more code or an extra library, no benefit at this size, same Safari 7-day deletion rule), sessionStorage (wiped when the tab closes), cookies (~4 KB, sent to servers). Show a friendly message if storage is full, blocked (e.g. some private browsing modes), or the saved data can't be read.
+- **Sets** record **reps + weight** in kg. Weight 0 is allowed (bodyweight). Each set row shows weight first, then reps.
 - **Ticking sets:** during a workout each set has a ✓ tick button at the end of its row (Option A). A set can only be ticked once it has reps and weight; clearing either un-ticks it. Ticked rows get a light orange tint and lose their remove ✕. Starting from a template pre-fills the planned numbers with nothing ticked. The tick is only kept on the active workout; saved workouts and templates don't store it.
 - **Templates:** maximum 20. A template can't be saved (as new or over an existing one) if its name is empty, it has no exercises, or **any set is missing reps or weight**. Template names must be unique (ignoring case).
 - **Exercises vs variations:**
@@ -75,8 +75,8 @@ Check it worked: the served stylesheet should contain the current colour tokens,
 
 | Address | Purpose |
 |---|---|
-| `/` Home | Big "Start workout" (or "Resume" if one is running), up to 3 templates as one-tap starts (most recently used first, then most recently created) with an "All templates" link, then this week's workout count and the last workout. |
-| `/workout` | The active workout. Only one at a time; it survives a page refresh. With none running, show a start screen (start blank + list of templates). Add exercises via the picker, pick/add a variation, add/remove sets, enter reps + weight, see a "last time" hint. Finish or discard. |
+| `/` Home | Big "Start workout" (or "Resume" if one is running), up to 3 templates as one-tap starts (most recently used first, then most recently created) with an "All templates" link, then this week's and this month's workout counts and the last workout. |
+| `/workout` | The active workout. Only one at a time; it survives a page refresh. With none running, show a start screen (start blank + list of templates). Add exercises via the picker, pick/add a variation, add/remove sets (Add set copies the previous set's numbers), enter reps + weight, see a "last time" hint. Finish or discard. |
 | `/history` | Past workouts, newest first, each with date, duration, number of exercises, number of sets, total volume. |
 | `/history/[id]` | **Detail page** for one workout: full view, edit, delete. |
 | `/templates` | Template list (shows "x / 20"): create, clone, delete, start a workout. |
@@ -102,7 +102,7 @@ No blank screens: every list has a readable empty state (e.g. "No workouts yet �
 - `lib/validation.ts` — template completeness, unique names, 20 limit, workout finish rules.
 - `lib/summary.ts` — duration, set count, volume, weekly/monthly counts, "last time" lookup. Weeks start on Monday. "Last time" = the newest saved workout with the same exercise and variation (no variation only matches no variation).
 - Editing a past workout (`/history/[id]`, in place on the detail page) uses the same completeness rule as templates: every set needs reps and weight. Date and times aren't editable.
-- `components/` — AppShell/nav, ExerciseEditor (shared by the active workout, history edit and template edit), ExercisePicker, VariationPicker, SetRow, EmptyState, NotFoundMessage, Dialog (native `<dialog>`, portalled to `<body>` and mounted only while open, so its forms never nest in a page form) + ConfirmDialog, TemplateForm, WorkoutSaved (the "Workout saved" orb screen plus the save-as-template / update-template choice), TemplateStartList (templates as one-tap starts, on Home and the Workout start screen), WorkoutListItem (one past workout row, on History and Home), LastTimeHint (the "last time" line under each exercise in the active workout), plus design pieces: Glow (page-top blob), GlowOrb (big-moment orb; `compact` size on the Workout saved screen so the template choice stays on screen), Icon (inline SVG set), Wordmark.
+- `components/` — AppShell/nav, ExerciseEditor (shared by the active workout, history edit and template edit), ExercisePicker, VariationPicker, SetRow, EmptyState, NotFoundMessage, Dialog (native `<dialog>`, portalled to `<body>` and mounted only while open, so its forms never nest in a page form) + ConfirmDialog, TemplateForm, WorkoutSaved (the "Workout saved" orb screen plus the save-as-template / update-template choice), TemplateStartList (templates as one-tap starts, on Home and the Workout start screen), WorkoutListItem (one past workout row, on History and Home), LastTimeHint (the "last time" line under each exercise in the active workout), Button (primary/secondary styles), PageHeader (page title with the glow and a rule line below), LeaveGuard (asks "Discard your changes?" before leaving a page with unsaved edits), plus design pieces: Glow (page-top blob), GlowOrb (big-moment orb; `compact` size on the Workout saved screen so the template choice stays on screen), Icon (inline SVG set), Wordmark.
 - `app/not-found.tsx` handles unknown addresses. Detail pages show the same NotFoundMessage when an id isn't in storage.
 - Next.js 16 note: `cacheComponents` is on in `next.config.ts`, so dynamic route `params` are runtime data. Detail pages are client components that read the id with `useParams`. Generate ids with `crypto.randomUUID()`.
 

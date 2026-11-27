@@ -14,6 +14,8 @@ Save the routines you do most, tick off sets as you go, and see what you lifted 
 
 Repbook is a Next.js app that runs locally. It has four main sections (**Home, Workout, History, Templates**) plus an About page. On a phone they sit in bottom tabs; on a laptop, in a top bar.
 
+- Every page that isn't a main tab has a **← Back** button that takes you back to the tab you came from. If you've made changes you haven't saved, it asks before throwing them away.
+
 ### Log a workout
 
 - Start a blank workout, or start one of your templates in one tap from Home or the Workout tab.
