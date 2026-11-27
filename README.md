@@ -10,9 +10,9 @@ Save the routines you do most, tick off sets as you go, and see what you lifted 
   <img src="docs/screenshots/workout-saved.jpg" alt="Workout saved screen with template options" width="260">
 </p>
 
-## What we built
+## Features
 
-Repbook is a Next.js app that runs locally. It has four main sections (**Home, Workout, History, Templates**) plus an About page. On a phone they sit in bottom tabs; on a laptop, in a top bar.
+Repbook is a Next.js app that runs locally. It has four main sections (**Home, Workout, History, Templates**) plus an About page. On a phone they sit in bottom tabs; on a laptop, in a top bar. Every other page has a **← Back** button that takes you back to the tab you came from. If you've made changes you haven't saved, it asks before throwing them away.
 
 ### Log a workout
 
@@ -75,9 +75,10 @@ If storage is full, blocked (e.g. some private browsing modes) or the saved data
 
 ## Run it locally
 
-You need **Node.js 20.9 or newer** (check with `node -v`).
+You need **Git** and **Node.js 20.9 or newer** (check with `node -v`).
 
 ```bash
+git clone https://github.com/sydneysywang/repbook.git
 cd repbook
 npm install
 npm run dev
